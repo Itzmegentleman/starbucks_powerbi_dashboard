@@ -1,0 +1,2938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Starbucks — Power BI Interactive Analytics Dashboard</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js 4.4.1 & DataLabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+  <!-- Leaflet.js 1.9.4 for Interactive India Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Inter"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            sbx: {
+              cream: '#FAF8F3',
+              workspace: '#E8E6E1',
+              dark: '#004F35',
+              deeper: '#003422',
+              brand: '#005238',
+              kpi: '#16362B',
+              muted: '#55635D',
+              gold: '#C9A86A',
+              sage: '#9CB2A4',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Base Typography & Tabular Figures */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #E8E6E1;
+      font-family: 'Plus Jakarta Sans', 'Inter', 'Segoe UI', system-ui, sans-serif;
+      color: #16362B;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Power BI Report Canvas Frame */
+    .pbi-canvas-wrapper {
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      box-shadow: 0 18px 48px rgba(18, 42, 33, 0.14), 0 2px 8px rgba(18, 42, 33, 0.08);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #FAF8F3;
+      border: 1px solid rgba(0, 79, 53, 0.1);
+    }
+
+    .pbi-report-stage {
+      position: relative;
+      background-color: #FAF8F3;
+      min-height: 760px;
+      overflow: hidden;
+    }
+
+    @media (min-width: 1280px) {
+      .pbi-report-stage {
+        aspect-ratio: 16 / 9;
+        min-height: 750px;
+      }
+    }
+
+    /* Page Switching Transition */
+    .report-page {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      animation: pbiFadeIn 0.28s ease-out;
+    }
+    .report-page.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes pbiFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Power BI Slicer Styling */
+    .pbi-slicer-box {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid #D5D9D5;
+      border-radius: 4px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .pbi-slicer-box:hover, .pbi-slicer-box:focus-within {
+      border-color: #005238;
+      box-shadow: 0 0 0 2px rgba(0, 82, 56, 0.12);
+    }
+    .pbi-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* Category Card Interactions */
+    .cat-card {
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      border-radius: 10px;
+      border: 1.5px solid transparent;
+    }
+    .cat-card:hover {
+      transform: translateY(-4px);
+      background-color: rgba(255, 255, 255, 0.65);
+      box-shadow: 0 6px 16px rgba(0, 79, 53, 0.08);
+    }
+    .cat-card.is-selected {
+      background-color: rgba(0, 82, 56, 0.08);
+      border-color: #005238;
+      box-shadow: 0 6px 18px rgba(0, 82, 56, 0.14);
+      transform: translateY(-3px);
+    }
+    .cat-card.is-dimmed {
+      opacity: 0.36;
+      filter: saturate(0.55);
+    }
+    .cat-card.is-dimmed:hover {
+      opacity: 0.78;
+      filter: saturate(0.9);
+    }
+
+    /* Legend Item Interactions */
+    .legend-item {
+      cursor: pointer;
+      transition: opacity 0.18s ease, background-color 0.18s ease, transform 0.15s ease;
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+    .legend-item:hover {
+      background-color: rgba(0, 82, 56, 0.07);
+    }
+    .legend-item.is-selected {
+      background-color: rgba(0, 82, 56, 0.12);
+      font-weight: 700;
+      color: #004F35;
+    }
+    .legend-item.is-dimmed {
+      opacity: 0.4;
+    }
+
+    /* Power BI Bottom Tab Bar */
+    .pbi-bottom-bar {
+      background: #F3F2EF;
+      border-top: 1px solid #D7D5CF;
+    }
+    .pbi-tab {
+      position: relative;
+      cursor: pointer;
+      transition: background-color 0.18s ease, color 0.18s ease;
+      color: #4A5550;
+      border-right: 1px solid #DFDDD7;
+      user-select: none;
+    }
+    .pbi-tab:hover {
+      background-color: #E7E5DF;
+      color: #16362B;
+    }
+    .pbi-tab.active {
+      background-color: #FFFFFF;
+      color: #005238;
+      font-weight: 700;
+    }
+    .pbi-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background-color: #005238;
+    }
+
+    /* Subtle Dotted Power BI Footer Accent */
+    .pbi-dotted-footer {
+      border-top: 1.5px dashed rgba(85, 99, 93, 0.35);
+    }
+
+    /* Leaflet Map Custom Styling */
+    #india-map {
+      width: 100%;
+      height: 100%;
+      min-height: 440px;
+      background-color: #B4CBF0;
+      border-radius: 4px;
+      z-index: 5;
+    }
+    .leaflet-tooltip.pbi-map-tooltip {
+      background-color: #0D3B2A;
+      color: #FAF8F3;
+      border: 1px solid #C9A86A;
+      border-radius: 6px;
+      padding: 8px 11px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .leaflet-tooltip-top.pbi-map-tooltip::before {
+      border-top-color: #0D3B2A;
+    }
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+      background: rgba(255,255,255,0.75) !important;
+      padding: 1px 4px !important;
+    }
+
+    /* Subtle KPI hover lift */
+    .kpi-card {
+      transition: transform 0.2s ease;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="min-h-screen py-2 px-2 sm:py-4 sm:px-4 flex flex-col items-center justify-center">
+
+  <!-- Reusable SVG Definitions (Starbucks Siren Emblem + Gradients) -->
+  <svg width="0" height="0" class="absolute pointer-events-none" aria-hidden="true">
+    <defs>
+      <!-- Detailed Circular Starbucks Siren Logo Symbol -->
+      <symbol id="sbx-siren" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="58" fill="#006241" />
+        <circle cx="60" cy="60" r="54" fill="none" stroke="#FAF8F3" stroke-width="1.6" opacity="0.22" />
+        <!-- Outer Wavy Hair Rays -->
+        <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+          <path d="M22,62 C20,40 34,20 60,20 C86,20 100,40 98,62" stroke-width="3.2" />
+          <path d="M16,68 C15,44 28,26 42,23" stroke-width="3.5" />
+          <path d="M104,68 C105,44 92,26 78,23" stroke-width="3.5" />
+          <path d="M20,78 C22,64 26,52 34,44" stroke-width="3.4" />
+          <path d="M100,78 C98,64 94,52 86,44" stroke-width="3.4" />
+          <path d="M26,88 C28,74 34,62 41,54" stroke-width="3.2" />
+          <path d="M94,88 C92,74 86,62 79,54" stroke-width="3.2" />
+          <path d="M35,96 C37,83 41,72 47,65" stroke-width="3" />
+          <path d="M85,96 C83,83 79,72 73,65" stroke-width="3" />
+        </g>
+        <!-- Twin Fish Tails on Left & Right -->
+        <path d="M13,72 C11,60 17,52 24,57 C20,62 20,70 25,77 C21,82 14,80 13,72 Z" fill="#FFFFFF" />
+        <path d="M107,72 C109,60 103,52 96,57 C100,62 100,70 95,77 C99,82 106,80 107,72 Z" fill="#FFFFFF" />
+        <!-- Tail Fin Notches -->
+        <path d="M16,64 L21,67 M16,71 L21,72" stroke="#006241" stroke-width="1.6" stroke-linecap="round" />
+        <path d="M104,64 L99,67 M104,71 L99,72" stroke="#006241" stroke-width="1.6" stroke-linecap="round" />
+
+        <!-- Crown & Center Star -->
+        <path d="M41,31 L46,18 L53,26 L60,12 L67,26 L74,18 L79,31 Z" fill="#FFFFFF" />
+        <polygon points="60,15.5 61.5,19.2 65.4,19.4 62.3,21.8 63.3,25.5 60,23.3 56.7,25.5 57.7,21.8 54.6,19.4 58.5,19.2" fill="#006241" />
+        <path d="M43,31 Q60,28 77,31 L75,35 Q60,32.5 45,35 Z" fill="#006241" />
+
+        <!-- Siren Face & Torso -->
+        <path d="M46,42 C46,35 52,32 60,32 C68,32 74,35 74,42 C74,52 68,61 60,61 C52,61 46,52 46,42 Z" fill="#FFFFFF" />
+        <!-- Facial Features (Clean Iconic Green Lines) -->
+        <path d="M51,43 Q54,41 57,43" fill="none" stroke="#006241" stroke-width="1.7" stroke-linecap="round" />
+        <path d="M63,43 Q66,41 69,43" fill="none" stroke="#006241" stroke-width="1.7" stroke-linecap="round" />
+        <circle cx="54.2" cy="45.2" r="1.4" fill="#006241" />
+        <circle cx="65.8" cy="45.2" r="1.4" fill="#006241" />
+        <path d="M60,43.5 L59.2,49.5 L61,49.5" fill="none" stroke="#006241" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M55.5,53.2 Q60,56.2 64.5,53.2" fill="none" stroke="#006241" stroke-width="1.7" stroke-linecap="round" />
+
+        <!-- Neck & Shoulders -->
+        <path d="M53,60 L67,60 L72,78 C72,92 67,102 60,104 C53,102 48,92 48,78 Z" fill="#FFFFFF" />
+        <path d="M48,74 C53,77 67,77 72,74" fill="none" stroke="#006241" stroke-width="1.6" />
+        <path d="M51,83 C56,86 64,86 69,83" fill="none" stroke="#006241" stroke-width="1.5" />
+        <path d="M53,91 C57,94 63,94 67,91" fill="none" stroke="#006241" stroke-width="1.4" />
+        <!-- Flowing Hair Framing Face -->
+        <path d="M46,38 C39,46 39,65 44,82 C46,89 49,97 53,102" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" />
+        <path d="M74,38 C81,46 81,65 76,82 C74,89 71,97 67,102" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" />
+      </symbol>
+
+      <!-- Reusable Botanical Coffee Leaf Sketch -->
+      <symbol id="bg-botanical-leaves" viewBox="0 0 180 280">
+        <g fill="none" stroke="#8FA899" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.52">
+          <path d="M-8,12 C18,62 34,125 22,220" stroke-width="1.8" />
+          <!-- Top Leaf -->
+          <path d="M4,42 C-2,22 6,6 22,-4 C28,14 24,34 8,46 Z" fill="#A9BFB1" fill-opacity="0.14" />
+          <path d="M6,42 L18,6" />
+          <!-- Right Sweeping Leaf -->
+          <path d="M18,86 C48,54 88,48 118,54 C96,86 64,104 20,96 Z" fill="#A9BFB1" fill-opacity="0.14" />
+          <path d="M20,92 C52,78 82,66 112,56" />
+          <path d="M48,80 L62,64 M68,72 L84,60 M44,83 L56,92 M66,74 L78,82" />
+          <!-- Mid-Right Leaf -->
+          <path d="M24,128 C62,114 96,126 124,154 C88,164 50,158 24,136 Z" fill="#A9BFB1" fill-opacity="0.14" />
+          <path d="M26,133 C60,136 90,142 118,152" />
+          <path d="M54,136 L68,128 M76,140 L92,134 M52,138 L64,150 M78,142 L90,152" />
+          <!-- Bottom Drooping Leaf -->
+          <path d="M20,164 C52,174 72,202 68,242 C40,224 22,198 18,170 Z" fill="#A9BFB1" fill-opacity="0.14" />
+          <path d="M20,168 C38,190 54,212 65,236" />
+          <!-- Coffee Cherries -->
+          <ellipse cx="14" cy="112" rx="9" ry="11" fill="#FAF8F3" />
+          <path d="M14,102 C11,109 17,115 14,122" />
+          <ellipse cx="32" cy="116" rx="8" ry="10" fill="#FAF8F3" />
+          <path d="M32,107 C30,113 34,119 32,125" />
+        </g>
+      </symbol>
+
+      <!-- Reusable Bottom-Left Frappuccino Cup + Roasted Coffee Beans Illustration -->
+      <symbol id="bg-frapp-cup" viewBox="0 0 185 215">
+        <g>
+          <!-- Soft Ground Shadow -->
+          <ellipse cx="88" cy="196" rx="68" ry="11" fill="#002418" opacity="0.45" />
+          <!-- Whipped Cream Swirls -->
+          <path d="M44,68 C40,56 50,48 59,48 C56,37 67,30 78,31 C79,22 92,16 98,25 C107,23 117,31 114,41 C124,42 132,51 128,63 C124,72 48,74 44,68 Z" fill="#FFFDF8" stroke="#E5DEC9" stroke-width="1.5" />
+          <path d="M56,56 C68,51 102,51 116,56" fill="none" stroke="#E8DFC8" stroke-width="2" stroke-linecap="round" />
+          <path d="M64,43 C74,38 96,38 108,44" fill="none" stroke="#E8DFC8" stroke-width="2" stroke-linecap="round" />
+          <!-- Rich Chocolate / Caramel Drizzle -->
+          <path d="M72,27 C78,36 68,46 78,56 M88,22 C96,34 84,48 96,60 M103,31 C111,40 100,52 110,61 M60,44 C76,40 104,41 119,48 M52,58 C74,53 106,54 124,61" fill="none" stroke="#4A2711" stroke-width="3.2" stroke-linecap="round" opacity="0.88" />
+          <path d="M74,29 C79,36 71,45 79,54 M90,25 C96,35 87,47 97,58" fill="none" stroke="#7A4420" stroke-width="1.3" stroke-linecap="round" />
+          <!-- Paper Cup Rim -->
+          <ellipse cx="86" cy="69" rx="46" ry="9" fill="#EAE3D2" stroke="#D1C7B2" stroke-width="1.2" />
+          <path d="M40,69 C40,76 132,76 132,69 L131,74 C131,81 41,81 41,74 Z" fill="#F5F0E4" stroke="#D5CCB8" stroke-width="1" />
+          <!-- Tapered Paper Cup Body -->
+          <defs>
+            <linearGradient id="cupBodyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#DDD5C5" />
+              <stop offset="28%" stop-color="#FAF7F0" />
+              <stop offset="68%" stop-color="#F2ECE0" />
+              <stop offset="100%" stop-color="#CFC5B2" />
+            </linearGradient>
+          </defs>
+          <path d="M44,76 L128,76 L116,188 C115,194 57,194 56,188 Z" fill="url(#cupBodyGrad)" stroke="#CFC6B4" stroke-width="1" />
+          <!-- Siren Logo on Cup -->
+          <use href="#sbx-siren" x="61" y="102" width="50" height="50" />
+          <!-- Roasted Coffee Beans Around Cup Base -->
+          <g transform="translate(18, 175)">
+            <ellipse cx="14" cy="11" rx="12" ry="7.5" transform="rotate(-14 14 11)" fill="#4D2912" stroke="#2D1507" stroke-width="1" />
+            <path d="M5,12 Q14,8 23,9" fill="none" stroke="#241005" stroke-width="1.4" />
+            <ellipse cx="32" cy="18" rx="11" ry="7" transform="rotate(10 32 18)" fill="#633619" stroke="#361A09" stroke-width="1" />
+            <path d="M23,17 Q32,20 41,19" fill="none" stroke="#241005" stroke-width="1.4" />
+            <ellipse cx="18" cy="24" rx="10" ry="6.2" transform="rotate(-6 18 24)" fill="#3E200E" />
+            <path d="M10,24 Q18,22 26,24" fill="none" stroke="#1F0D04" stroke-width="1.3" />
+          </g>
+          <g transform="translate(108, 172)">
+            <ellipse cx="16" cy="13" rx="12" ry="7.5" transform="rotate(16 16 13)" fill="#582F15" stroke="#2D1507" stroke-width="1" />
+            <path d="M7,11 Q16,15 25,15" fill="none" stroke="#241005" stroke-width="1.4" />
+            <ellipse cx="37" cy="18" rx="11.5" ry="7" transform="rotate(-12 37 18)" fill="#6E3D1E" stroke="#3A1D0B" stroke-width="1" />
+            <path d="M28,19 Q37,16 46,17" fill="none" stroke="#241005" stroke-width="1.4" />
+            <ellipse cx="22" cy="26" rx="11" ry="6.8" transform="rotate(4 22 26)" fill="#44230F" />
+            <path d="M13,26 Q22,24 31,26" fill="none" stroke="#1E0D04" stroke-width="1.3" />
+            <ellipse cx="52" cy="23" rx="9.5" ry="6" transform="rotate(-22 52 23)" fill="#552D14" />
+            <path d="M45,25 Q52,22 59,21" fill="none" stroke="#241005" stroke-width="1.2" />
+          </g>
+        </g>
+      </symbol>
+
+      <!-- Top-Right Sweeping Starbucks Dark Green Cafe Banner -->
+      <linearGradient id="bannerGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#044E34" />
+        <stop offset="55%" stop-color="#013D28" />
+        <stop offset="100%" stop-color="#00281A" />
+      </linearGradient>
+      <linearGradient id="goldTrimGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#B9934E" />
+        <stop offset="45%" stop-color="#E7CE92" />
+        <stop offset="100%" stop-color="#B9934E" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- Main Power BI Workspace Container -->
+  <div class="pbi-canvas-wrapper">
+
+    <!-- 16:9 Power BI Report Stage -->
+    <div class="pbi-report-stage" id="report-stage">
+
+      <!-- ================================================================ -->
+      <!-- SHARED DECORATIVE BACKGROUND LAYERS (Pure Inline SVG)             -->
+      <!-- ================================================================ -->
+
+      <!-- Top-Right Sweeping Banner (Pages 1, 2, 4 Style) -->
+      <svg id="banner-standard" class="absolute top-0 right-0 w-[56%] max-w-[780px] h-auto pointer-events-none select-none z-0" viewBox="0 0 780 210" preserveAspectRatio="xMaxYMin slice">
+        <!-- Golden Accent Trim Under Wave -->
+        <path d="M68,0 C190,12 278,124 440,140 C562,152 678,136 780,192 L780,180 C680,124 562,140 442,128 C286,112 200,4 86,0 Z" fill="url(#goldTrimGrad)" />
+        <!-- Main Dark Green Sweeping Wave -->
+        <path d="M84,0 L780,0 L780,182 C680,126 562,142 442,130 C284,114 202,6 84,0 Z" fill="url(#bannerGreenGrad)" />
+        <!-- Subtle Cafe Interior Architectural Window Grid Glow -->
+        <g opacity="0.16" stroke="#8EE0BE" stroke-width="1.2" fill="none">
+          <path d="M235,0 L280,100 M305,0 L355,120 M385,0 L435,128 M470,0 L515,134 M560,0 L595,138 M650,0 L680,145 M730,0 L752,162" />
+          <path d="M180,32 L780,32 M220,66 L780,66 M290,102 L780,102" />
+          <rect x="330" y="14" width="32" height="12" rx="2" fill="#A9F3D2" opacity="0.55" />
+          <rect x="422" y="18" width="38" height="12" rx="2" fill="#A9F3D2" opacity="0.5" />
+          <rect x="520" y="22" width="34" height="12" rx="2" fill="#A9F3D2" opacity="0.45" />
+          <rect x="275" y="42" width="44" height="46" rx="2" fill="#0B7B54" opacity="0.45" />
+          <rect x="485" y="52" width="60" height="58" rx="2" fill="#0B7B54" opacity="0.4" />
+          <rect x="612" y="68" width="54" height="52" rx="2" fill="#0B7B54" opacity="0.45" />
+          <circle cx="395" cy="90" r="14" fill="#F2D79B" opacity="0.24" />
+          <circle cx="565" cy="96" r="16" fill="#F2D79B" opacity="0.2" />
+        </g>
+        <!-- Tilted Bold White STARBUCKS® Storefront Sign -->
+        <g transform="translate(568, 56) rotate(-13)">
+          <text x="0" y="0" fill="#FFFFFF" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="31" letter-spacing="2.2" opacity="0.88">STARBUCKS<tspan font-size="13" dy="-12">®</tspan></text>
+        </g>
+      </svg>
+
+      <!-- Top-Right Sweeping Banner (Page 3 Location Variant) -->
+      <svg id="banner-location" class="hidden absolute top-0 right-0 w-[68%] max-w-[960px] h-auto pointer-events-none select-none z-0" viewBox="0 0 960 190" preserveAspectRatio="xMaxYMin slice">
+        <path d="M40,122 C185,48 310,6 450,8 C590,10 735,105 960,28 L960,0 L210,0 C145,45 95,88 40,122 Z" fill="url(#goldTrimGrad)" opacity="0.92" />
+        <path d="M55,116 C190,46 314,12 452,14 C592,16 742,96 960,18 L960,0 L235,0 C168,42 110,82 55,116 Z" fill="url(#bannerGreenGrad)" />
+        <!-- Soft Green Glow Behind Page 3 KPIs -->
+        <path d="M420,16 C590,18 765,100 960,18 L960,185 C830,175 680,145 530,118 Z" fill="#006241" opacity="0.08" />
+        <!-- Faint Siren on Far Top-Right Edge -->
+        <use href="#sbx-siren" x="858" y="-12" width="125" height="125" opacity="0.22" />
+      </svg>
+
+      <!-- Top-Left Botanical Coffee Leaf Line Art -->
+      <svg class="absolute top-16 left-0 w-[135px] sm:w-[165px] h-auto pointer-events-none select-none z-0" viewBox="0 0 180 280">
+        <use href="#bg-botanical-leaves" x="0" y="0" width="180" height="280" />
+      </svg>
+
+      <!-- Large Faint Right-Edge Siren Watermark -->
+      <svg id="right-siren-watermark" class="absolute right-[-65px] bottom-[30px] w-[360px] sm:w-[440px] h-[360px] sm:h-[440px] pointer-events-none select-none z-0 opacity-[0.048]" viewBox="0 0 120 120">
+        <use href="#sbx-siren" x="0" y="0" width="120" height="120" />
+      </svg>
+
+      <!-- Bottom-Left Sweeping Dark Green Wave + Frappuccino Cup -->
+      <div class="absolute bottom-0 left-0 w-full pointer-events-none select-none z-[2]">
+        <svg class="w-[54%] max-w-[740px] h-auto block" viewBox="0 0 740 165" preserveAspectRatio="xMinYMax slice">
+          <!-- Outer Gold Trim -->
+          <path d="M0,12 C125,74 235,118 370,118 C482,118 595,115 735,165 L0,165 Z" fill="url(#goldTrimGrad)" />
+          <!-- Dark Green Wave -->
+          <path d="M0,21 C124,82 232,124 368,124 C480,124 585,122 720,165 L0,165 Z" fill="url(#bannerGreenGrad)" />
+          <!-- Inner Subtle Gold Accent Arc -->
+          <path d="M18,75 C140,128 242,148 395,142 C490,138 560,144 610,163" fill="none" stroke="#C9A86A" stroke-width="1.6" opacity="0.65" />
+        </svg>
+      </div>
+
+      <!-- Bottom-Left Frappuccino Cup Illustration -->
+      <svg id="corner-frapp-cup" class="absolute bottom-[4px] left-[4px] sm:left-[10px] w-[96px] sm:w-[132px] md:w-[144px] h-auto pointer-events-none select-none z-[15]" viewBox="0 0 185 215">
+        <use href="#bg-frapp-cup" x="0" y="0" width="185" height="215" />
+      </svg>
+
+      <!-- Bottom-Right Subtle Watermark Cup / Skyline -->
+      <svg id="bottom-right-sketch" class="absolute bottom-[8px] right-[12px] w-[135px] h-auto pointer-events-none select-none z-[1] opacity-[0.18]" viewBox="0 0 150 110">
+        <!-- Faint Coffee Beans & Iced Cup Line Sketch (Pages 1, 2, 4) -->
+        <g fill="none" stroke="#6E8578" stroke-width="1.4" stroke-linecap="round">
+          <ellipse cx="26" cy="92" rx="14" ry="8" transform="rotate(-12 26 92)" />
+          <path d="M15,93 Q26,89 37,91" />
+          <ellipse cx="58" cy="86" rx="14" ry="8.5" transform="rotate(18 58 86)" />
+          <path d="M47,84 Q58,88 69,88" />
+          <path d="M84,38 L136,38 L128,104 L92,104 Z" />
+          <path d="M86,38 C86,18 134,18 134,38" />
+          <path d="M110,10 L110,24" />
+          <circle cx="110" cy="68" r="14" />
+        </g>
+      </svg>
+
+      <!-- Page 3 Bottom-Right Subtle City Skyline & Green Wave Accent -->
+      <svg id="bottom-right-skyline" class="hidden absolute bottom-0 right-0 w-[34%] max-w-[460px] h-auto pointer-events-none select-none z-[1]" viewBox="0 0 460 110">
+        <!-- Faint Teal City Skyline -->
+        <g fill="#7FA99B" opacity="0.45">
+          <rect x="278" y="62" width="16" height="44" />
+          <rect x="298" y="42" width="20" height="64" />
+          <rect x="322" y="54" width="14" height="52" />
+          <rect x="340" y="26" width="22" height="80" />
+          <rect x="349" y="14" width="4" height="12" />
+          <rect x="366" y="48" width="18" height="58" />
+          <rect x="388" y="34" width="24" height="72" />
+          <rect x="416" y="52" width="18" height="54" />
+          <rect x="438" y="22" width="20" height="84" />
+        </g>
+        <!-- Bottom Right Sweeping Wave -->
+        <path d="M120,110 C220,74 335,76 460,96 L460,110 Z" fill="url(#goldTrimGrad)" />
+        <path d="M135,110 C230,82 340,84 460,102 L460,110 Z" fill="url(#bannerGreenGrad)" />
+      </svg>
+
+      <!-- Bottom Dotted Footer Line -->
+      <div class="absolute bottom-[14px] left-[160px] right-[18px] pbi-dotted-footer pointer-events-none z-[1]"></div>
+
+
+      <!-- ================================================================ -->
+      <!-- PAGE 1: SALES OVERVIEW                                           -->
+      <!-- ================================================================ -->
+      <section id="page-1" class="report-page active px-5 sm:px-7 pt-3 sm:pt-4 pb-5 justify-between">
+        <!-- Header Row: Logo + Title + Power BI Slicers -->
+        <div class="flex flex-wrap items-start justify-between gap-3 relative z-20">
+          <!-- Brand Header -->
+          <div class="flex items-center gap-3.5">
+            <svg class="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] shrink-0 drop-shadow-sm" viewBox="0 0 120 120">
+              <use href="#sbx-siren" x="0" y="0" width="120" height="120" />
+            </svg>
+            <div class="h-12 w-[1.5px] bg-[#6E867B]/70"></div>
+            <div>
+              <h1 class="text-2xl sm:text-[31px] font-extrabold tracking-tight text-[#005238] leading-none">
+                STARBUCKS<sup class="text-xs font-bold ml-0.5 align-top">®</sup>
+              </h1>
+              <p class="text-[12px] sm:text-[13.5px] font-semibold text-[#1B4A3A] mt-1">
+                Brewing Insights. Fueling Connections.
+              </p>
+              <div class="w-11 h-[3.5px] bg-[#005238] rounded-full mt-1.5"></div>
+            </div>
+          </div>
+
+          <!-- Header Slicers (Year & MonthName) -->
+          <div class="flex items-center gap-3 mr-auto sm:ml-6 lg:ml-8 mt-1">
+            <!-- Year Slicer -->
+            <div class="w-[104px] sm:w-[116px]">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-[#3C4B45] mb-1 px-0.5">
+                <span>Year</span>
+                <svg class="w-3 h-3 text-[#65756E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="pbi-slicer-box relative flex items-center">
+                <select id="p1-year-slicer" class="pbi-select w-full text-[12px] font-medium text-[#1F332B] px-2.5 py-1.5 pr-7" onchange="handleSlicerChange('year', this.value)">
+                  <option value="All">All</option>
+                  <option value="2023">2023</option>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                </select>
+                <svg class="w-3.5 h-3.5 text-[#5D6B65] absolute right-2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+
+            <!-- MonthName Slicer -->
+            <div class="w-[128px] sm:w-[144px]">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-[#3C4B45] mb-1 px-0.5">
+                <span>MonthName</span>
+                <svg class="w-3 h-3 text-[#65756E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="pbi-slicer-box relative flex items-center">
+                <select id="p1-month-slicer" class="pbi-select w-full text-[12px] font-medium text-[#1F332B] px-2.5 py-1.5 pr-7" onchange="handleSlicerChange('month', this.value)">
+                  <option value="All">All</option>
+                  <option value="January">January</option>
+                  <option value="February">February</option>
+                  <option value="March">March</option>
+                  <option value="April">April</option>
+                  <option value="May">May</option>
+                  <option value="June">June</option>
+                  <option value="July">July</option>
+                  <option value="August">August</option>
+                  <option value="September">September</option>
+                  <option value="October">October</option>
+                  <option value="November">November</option>
+                  <option value="December">December</option>
+                </select>
+                <svg class="w-3.5 h-3.5 text-[#5D6B65] absolute right-2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 KPI Cards Row -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mt-3 sm:mt-4 px-1 sm:px-6 relative z-20">
+          <!-- KPI 1: TotalRevenue -->
+          <div class="kpi-card flex items-center gap-3.5">
+            <div class="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg class="w-11 h-11 text-[#0C4E37]" viewBox="0 0 48 48" fill="none">
+                <path d="M7 22L19 13L26 17L39 7M39 7H31M39 7V15" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="8" y="29" width="6" height="11" rx="1.2" fill="currentColor"/>
+                <rect x="17" y="24" width="6" height="16" rx="1.2" fill="currentColor"/>
+                <rect x="26" y="19" width="6" height="21" rx="1.2" fill="currentColor" opacity="0.35"/>
+                <circle cx="34" cy="34" r="7.5" fill="#FAF8F3" stroke="currentColor" stroke-width="2.4"/>
+                <text x="34" y="37.5" text-anchor="middle" fill="currentColor" font-size="10.5" font-weight="800">$</text>
+              </svg>
+            </div>
+            <div>
+              <div id="p1-kpi-revenue" class="text-xl sm:text-[25px] font-extrabold text-[#16362B] tracking-tight leading-tight tabular-nums">13,67,00,00,000</div>
+              <div class="text-[12px] font-medium text-[#55635D] mt-0.5">TotalRevenue</div>
+            </div>
+          </div>
+
+          <!-- KPI 2: TotalTransaction -->
+          <div class="kpi-card flex items-center gap-3.5">
+            <div class="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg class="w-11 h-11 text-[#0C4E37]" viewBox="0 0 48 48" fill="none">
+                <rect x="5" y="12" width="32" height="22" rx="3.5" stroke="currentColor" stroke-width="2.5" fill="#FAF8F3"/>
+                <path d="M5 19H37" stroke="currentColor" stroke-width="3"/>
+                <rect x="10" y="24" width="7" height="5" rx="1" fill="currentColor"/>
+                <path d="M21 26.5H27" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <circle cx="36" cy="33" r="7.5" fill="#0C4E37" stroke="#FAF8F3" stroke-width="2"/>
+                <path d="M33 31.5A3.5 3.5 0 0 1 39 32M39 34.5A3.5 3.5 0 0 1 33 34" stroke="#FAF8F3" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div id="p1-kpi-transactions" class="text-xl sm:text-[25px] font-extrabold text-[#16362B] tracking-tight leading-tight tabular-nums">3,61,62,643</div>
+              <div class="text-[12px] font-medium text-[#55635D] mt-0.5">TotalTransaction</div>
+            </div>
+          </div>
+
+          <!-- KPI 3: AverageOrder Value -->
+          <div class="kpi-card flex items-center gap-3.5">
+            <div class="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg class="w-12 h-12 text-[#0C4E37]" viewBox="0 0 52 52" fill="none">
+                <circle cx="23" cy="26" r="19" stroke="currentColor" stroke-width="2.2" stroke-dasharray="88 26" stroke-linecap="round"/>
+                <path d="M12 17H34L32 13H14L12 17Z" fill="currentColor"/>
+                <path d="M14 19H32L29.5 39H16.5L14 19Z" stroke="currentColor" stroke-width="2.3" fill="#FAF8F3"/>
+                <circle cx="23" cy="29" r="4.5" fill="currentColor"/>
+                <circle cx="38" cy="35" r="8.5" fill="#0C4E37" stroke="#FAF8F3" stroke-width="2"/>
+                <text x="38" y="39" text-anchor="middle" fill="#FAF8F3" font-size="11.5" font-weight="800">$</text>
+              </svg>
+            </div>
+            <div>
+              <div id="p1-kpi-aov" class="text-xl sm:text-[25px] font-extrabold text-[#16362B] tracking-tight leading-tight tabular-nums">378.01</div>
+              <div class="text-[12px] font-medium text-[#55635D] mt-0.5">AverageOrder Value</div>
+            </div>
+          </div>
+
+          <!-- KPI 4: StoreCount -->
+          <div class="kpi-card flex items-center gap-3.5">
+            <div class="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg class="w-12 h-12 text-[#0C4E37]" viewBox="0 0 52 52" fill="none">
+                <path d="M10 22L14 14H38L42 22" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"/>
+                <path d="M9 22C9 25 12 27 15 27C18 27 20.5 25 20.5 22C20.5 25 23 27 26 27C29 27 31.5 25 31.5 22C31.5 25 34 27 37 27C40 27 43 25 43 22" stroke="currentColor" stroke-width="2.2"/>
+                <path d="M13 27V42H32" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>
+                <rect x="18" y="32" width="7" height="10" rx="1" stroke="currentColor" stroke-width="2"/>
+                <circle cx="26" cy="11" r="6" fill="#0C4E37" stroke="#FAF8F3" stroke-width="1.5"/>
+                <circle cx="26" cy="11" r="2.2" fill="#FAF8F3"/>
+                <!-- Location Pin Badge -->
+                <path d="M39 27C35.2 27 32 30 32 33.8C32 38.5 39 44.5 39 44.5C39 44.5 46 38.5 46 33.8C46 30 42.8 27 39 27Z" fill="#FAF8F3" stroke="currentColor" stroke-width="2.2"/>
+                <circle cx="39" cy="33.5" r="2.5" fill="currentColor"/>
+              </svg>
+            </div>
+            <div>
+              <div id="p1-kpi-stores" class="text-xl sm:text-[25px] font-extrabold text-[#16362B] tracking-tight leading-tight tabular-nums">502</div>
+              <div class="text-[12px] font-medium text-[#55635D] mt-0.5">StoreCount</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Sales Breakdown Strip (9 Clickable Illustrated Cards) -->
+        <div class="mt-3 sm:mt-4 relative z-20 px-1 sm:px-4">
+          <div class="flex items-center gap-2.5 mb-2">
+            <h2 class="text-[13.5px] font-bold text-[#144533] tracking-tight">Category Sales Breakdown</h2>
+            <span class="inline-block w-1.5 h-4 bg-[#C4C9C6] rounded-sm"></span>
+            <span class="text-[11px] text-[#6B7A74] hidden sm:inline">Click any category to cross-filter</span>
+          </div>
+          <div id="p1-category-strip" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 sm:gap-2">
+            <!-- Populated dynamically with rich custom SVG illustrations -->
+          </div>
+        </div>
+
+        <!-- Bottom 2-Column Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-3 relative z-20 flex-1 min-h-[255px] pl-2 sm:pl-20 pr-1 sm:pr-4">
+          <!-- Left: TotalRevenue by Category Donut -->
+          <div class="lg:col-span-6 flex flex-col">
+            <h3 class="text-[13.5px] font-bold text-[#144533] mb-1 ml-10 sm:ml-14">TotalRevenue by Category</h3>
+            <div class="flex-1 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <div class="relative w-full max-w-[335px] h-[230px]">
+                <canvas id="p1-donut-chart"></canvas>
+                <!-- Centered Siren SVG Inside Donut Cutout -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <svg class="w-[66px] h-[66px] drop-shadow-sm" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="59" fill="#FAF8F3" />
+                    <use href="#sbx-siren" x="5" y="5" width="110" height="110" />
+                  </svg>
+                </div>
+              </div>
+              <!-- Custom Clickable Power BI Legend -->
+              <div class="w-full sm:w-[148px] shrink-0 pl-1">
+                <div class="text-[11.5px] font-bold text-[#16362B] mb-1.5 px-1.5">Category</div>
+                <div id="p1-donut-legend" class="grid grid-cols-2 sm:grid-cols-1 gap-0.5 text-[11.5px] text-[#354640]"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Monthly Sales Volume Line Chart -->
+          <div class="lg:col-span-6 flex flex-col">
+            <h3 class="text-[13.5px] font-bold text-[#144533] mb-1">Monthly Sales Volume</h3>
+            <div class="relative flex-1 min-h-[225px] w-full">
+              <canvas id="p1-line-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================================ -->
+      <!-- PAGE 2: FINANCIAL & PROFITABILITY                                -->
+      <!-- ================================================================ -->
+      <section id="page-2" class="report-page px-5 sm:px-7 pt-3 sm:pt-4 pb-5 justify-between">
+        <!-- Brand Header -->
+        <div class="flex items-center gap-3.5 relative z-20">
+          <svg class="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] shrink-0 drop-shadow-sm" viewBox="0 0 120 120">
+            <use href="#sbx-siren" x="0" y="0" width="120" height="120" />
+          </svg>
+          <div class="h-12 w-[1.5px] bg-[#6E867B]/70"></div>
+          <div>
+            <h1 class="text-2xl sm:text-[31px] font-extrabold tracking-tight text-[#005238] leading-none">
+              STARBUCKS<sup class="text-xs font-bold ml-0.5 align-top">®</sup>
+            </h1>
+            <p class="text-[12px] sm:text-[13.5px] font-semibold text-[#1B4A3A] mt-1">
+              Brewing Insights. Fueling Connections.
+            </p>
+            <div class="w-11 h-[3.5px] bg-[#005238] rounded-full mt-1.5"></div>
+          </div>
+        </div>
+
+        <!-- 4 KPI Cards Separated by Vertical Dividers -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-0 mt-3 sm:mt-4 px-2 sm:px-6 relative z-20">
+          <!-- KPI 1: Total Revenue -->
+          <div class="kpi-card flex items-center justify-start lg:justify-center gap-3.5 lg:border-r lg:border-[#C9CFCB]/80 lg:pr-4">
+            <svg class="w-11 h-11 shrink-0 text-[#0B4A33]" viewBox="0 0 48 48" fill="none">
+              <path d="M7 26L18 16L25 20L38 8M38 8H30M38 8V16" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="8" y="31" width="6.5" height="10" rx="1" fill="currentColor"/>
+              <rect x="18" y="26" width="6.5" height="15" rx="1" fill="currentColor"/>
+              <rect x="28" y="19" width="6.5" height="22" rx="1" fill="currentColor"/>
+            </svg>
+            <div>
+              <div id="p2-kpi-revenue" class="text-xl sm:text-[23px] font-extrabold text-[#144332] tracking-tight tabular-nums">1,367,000,000</div>
+              <div class="text-[12px] font-semibold text-[#4B5B54]">Total Revenue</div>
+            </div>
+          </div>
+
+          <!-- KPI 2: Total Cost -->
+          <div class="kpi-card flex items-center justify-start lg:justify-center gap-3.5 lg:border-r lg:border-[#C9CFCB]/80 lg:px-4">
+            <svg class="w-11 h-11 shrink-0 text-[#0B4A33]" viewBox="0 0 48 48" fill="none">
+              <ellipse cx="18" cy="24" rx="10" ry="4.5" stroke="currentColor" stroke-width="2.4" fill="#FAF8F3"/>
+              <path d="M8 24V30C8 32.5 12.5 34.5 18 34.5C23.5 34.5 28 32.5 28 30V24" stroke="currentColor" stroke-width="2.4"/>
+              <path d="M8 30V36C8 38.5 12.5 40.5 18 40.5C23.5 40.5 28 38.5 28 36V30" stroke="currentColor" stroke-width="2.4"/>
+              <ellipse cx="30" cy="14" rx="9.5" ry="4.2" stroke="currentColor" stroke-width="2.4" fill="#FAF8F3"/>
+              <path d="M20.5 14V20C20.5 22.3 24.8 24.2 30 24.2C35.2 24.2 39.5 22.3 39.5 20V14" stroke="currentColor" stroke-width="2.4"/>
+              <path d="M20.5 20V26C20.5 28.3 24.8 30.2 30 30.2C35.2 30.2 39.5 28.3 39.5 26V20" stroke="currentColor" stroke-width="2.4"/>
+              <path d="M28 32.5C33.5 32.5 39.5 30.8 39.5 28.5V25" stroke="currentColor" stroke-width="2.4"/>
+            </svg>
+            <div>
+              <div id="p2-kpi-cost" class="text-xl sm:text-[23px] font-extrabold text-[#144332] tracking-tight tabular-nums">1,107,300,000</div>
+              <div class="text-[12px] font-semibold text-[#4B5B54]">Total Cost</div>
+            </div>
+          </div>
+
+          <!-- KPI 3: Operating Contribution -->
+          <div class="kpi-card flex items-center justify-start lg:justify-center gap-3.5 lg:border-r lg:border-[#C9CFCB]/80 lg:px-4">
+            <svg class="w-11 h-11 shrink-0 text-[#0B4A33]" viewBox="0 0 48 48" fill="none">
+              <circle cx="27" cy="16" r="9" stroke="currentColor" stroke-width="2.4" fill="#FAF8F3"/>
+              <text x="27" y="20" text-anchor="middle" fill="currentColor" font-size="12" font-weight="800">$</text>
+              <path d="M6 34L12 29H23C25 29 27 30.5 27 32.5H19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M27 32.5L36 29.5C38.2 28.8 40.5 30.2 40.5 32.2C40.5 33.4 39.7 34.4 38.4 34.9L25.5 39.5C23.4 40.2 21 40 19.1 38.9L12 35L9.5 39" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+              <div id="p2-kpi-contrib" class="text-xl sm:text-[23px] font-extrabold text-[#144332] tracking-tight tabular-nums">259,700,000</div>
+              <div class="text-[12px] font-semibold text-[#4B5B54]">Operating Contribution</div>
+            </div>
+          </div>
+
+          <!-- KPI 4: Contribution Margin -->
+          <div class="kpi-card flex items-center justify-start lg:justify-center gap-3.5 lg:pl-4">
+            <svg class="w-11 h-11 shrink-0 text-[#0B4A33]" viewBox="0 0 48 48" fill="none">
+              <path d="M24 5L28.5 8.8L34.3 8.2L36.2 13.8L41.5 16.5L40.3 22.3L43.5 27.2L39.6 31.6L39.8 37.5L34.2 39.1L31.2 44.2L25.6 42.6L20.5 45.4L16.3 41.2L10.4 41.2L9.2 35.5L4.3 32.2L6.2 26.6L3.6 21.3L8.1 17.5L8.7 11.6L14.4 10.7L18 6L24 5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" fill="#FAF8F3"/>
+              <text x="23.5" y="30" text-anchor="middle" fill="currentColor" font-size="16" font-weight="800">%</text>
+            </svg>
+            <div>
+              <div id="p2-kpi-margin" class="text-xl sm:text-[23px] font-extrabold text-[#144332] tracking-tight tabular-nums">19.00%</div>
+              <div class="text-[12px] font-semibold text-[#4B5B54]">Contribution Margin</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Row: 3 Columns (Donut + Monthly Revenue + Monthly Operating Contribution) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4 relative z-20 px-1 sm:px-3">
+          <!-- Left: Monochrome Green Donut -->
+          <div class="lg:col-span-4 flex flex-col">
+            <h3 class="text-[14.5px] font-bold text-[#144533] mb-1">Total Revenue by Category</h3>
+            <div class="flex items-center justify-center gap-1 flex-1">
+              <div class="relative w-[248px] h-[218px] shrink-0">
+                <canvas id="p2-donut-chart"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <svg class="w-[74px] h-[74px]" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="59" fill="#FAF8F3" />
+                    <use href="#sbx-siren" x="5" y="5" width="110" height="110" />
+                  </svg>
+                </div>
+              </div>
+              <div id="p2-donut-legend" class="flex flex-col gap-0.5 text-[11px] font-medium text-[#2E3F38] min-w-[106px]"></div>
+            </div>
+          </div>
+
+          <!-- Center: Monthly Revenue -->
+          <div class="lg:col-span-4 flex flex-col">
+            <h3 class="text-[14.5px] font-bold text-[#144533] mb-1 text-center lg:text-left lg:pl-8">Monthly Revenue</h3>
+            <div class="relative h-[220px] w-full">
+              <canvas id="p2-monthly-rev-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Right: Monthly Operating Contribution -->
+          <div class="lg:col-span-4 flex flex-col">
+            <h3 class="text-[14.5px] font-bold text-[#144533] mb-1 text-center lg:text-left lg:pl-6">Monthly Operating Contribution</h3>
+            <div class="relative h-[220px] w-full">
+              <canvas id="p2-monthly-contrib-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Row: 2 Columns (Cost by Component + Operating Contribution Margin Trend) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-3 relative z-20 pl-2 sm:pl-16 pr-2 sm:pr-4 flex-1 items-end">
+          <!-- Left: Cost by Component Horizontal Bar -->
+          <div class="lg:col-span-6 flex flex-col h-full justify-end">
+            <h3 class="text-[14.5px] font-bold text-[#144533] mb-1">Cost by Component</h3>
+            <div class="relative h-[185px] w-full">
+              <canvas id="p2-cost-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Right: Operating Contribution Margin Trend Line -->
+          <div class="lg:col-span-6 flex flex-col h-full justify-end">
+            <h3 class="text-[14.5px] font-bold text-[#144533] mb-1">Operating Contribution Margin Trend</h3>
+            <div class="relative h-[185px] w-full">
+              <canvas id="p2-margin-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================================ -->
+      <!-- PAGE 3: LOCATION & STORE PERFORMANCE                             -->
+      <!-- ================================================================ -->
+      <section id="page-3" class="report-page px-5 sm:px-7 pt-3 sm:pt-4 pb-5 justify-between">
+        <!-- Header Row: Left Brand + Right 3 KPI Cards -->
+        <div class="flex flex-wrap items-center justify-between gap-4 relative z-20">
+          <!-- Left Header -->
+          <div class="flex items-center gap-3.5">
+            <svg class="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] shrink-0 drop-shadow-sm" viewBox="0 0 120 120">
+              <use href="#sbx-siren" x="0" y="0" width="120" height="120" />
+            </svg>
+            <div class="h-12 w-[1.5px] bg-[#6E867B]/70"></div>
+            <div>
+              <h1 class="text-2xl sm:text-[31px] font-extrabold tracking-tight text-[#005238] leading-none">
+                STARBUCKS<sup class="text-xs font-bold ml-0.5 align-top">®</sup>
+              </h1>
+              <p class="text-[13px] sm:text-[14.5px] font-semibold text-[#1B4A3A] mt-1">
+                Location &amp; Store Performance
+              </p>
+              <div class="w-11 h-[3.5px] bg-[#005238] rounded-full mt-1.5"></div>
+            </div>
+          </div>
+
+          <!-- Top-Right 3 KPI Cards -->
+          <div class="flex flex-wrap items-center gap-5 sm:gap-8 lg:mr-14 mt-1 sm:mt-3">
+            <!-- KPI 1: Revenue per Store -->
+            <div class="kpi-card flex items-center gap-3">
+              <svg class="w-10 h-10 text-[#0C4E37]" viewBox="0 0 48 48" fill="none">
+                <rect x="5" y="12" width="32" height="22" rx="3.5" stroke="currentColor" stroke-width="2.5" fill="#FAF8F3"/>
+                <path d="M5 19H37" stroke="currentColor" stroke-width="3"/>
+                <rect x="10" y="24" width="7" height="5" rx="1" fill="currentColor"/>
+                <circle cx="36" cy="33" r="7.5" fill="#0C4E37" stroke="#FAF8F3" stroke-width="2"/>
+                <path d="M33 31.5A3.5 3.5 0 0 1 39 32M39 34.5A3.5 3.5 0 0 1 33 34" stroke="#FAF8F3" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <div>
+                <div id="p3-kpi-rev-store" class="text-xl sm:text-[24px] font-extrabold text-[#16362B] leading-tight tabular-nums">27.23M</div>
+                <div class="text-[11.5px] font-medium text-[#55635D]">Revenue per Store</div>
+              </div>
+            </div>
+
+            <!-- KPI 2: StoreCount -->
+            <div class="kpi-card flex items-center gap-3">
+              <svg class="w-11 h-11 text-[#0C4E37]" viewBox="0 0 52 52" fill="none">
+                <path d="M10 22L14 14H38L42 22" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"/>
+                <path d="M9 22C9 25 12 27 15 27C18 27 20.5 25 20.5 22C20.5 25 23 27 26 27C29 27 31.5 25 31.5 22C31.5 25 34 27 37 27C40 27 43 25 43 22" stroke="currentColor" stroke-width="2.2"/>
+                <path d="M13 27V42H32" stroke="currentColor" stroke-width="2.3"/>
+                <rect x="18" y="32" width="7" height="10" rx="1" stroke="currentColor" stroke-width="2"/>
+                <circle cx="26" cy="11" r="6" fill="#0C4E37" stroke="#FAF8F3" stroke-width="1.5"/>
+                <path d="M39 27C35.2 27 32 30 32 33.8C32 38.5 39 44.5 39 44.5C39 44.5 46 38.5 46 33.8C46 30 42.8 27 39 27Z" fill="#FAF8F3" stroke="currentColor" stroke-width="2.2"/>
+                <circle cx="39" cy="33.5" r="2.4" fill="currentColor"/>
+              </svg>
+              <div>
+                <div id="p3-kpi-stores" class="text-xl sm:text-[24px] font-extrabold text-[#16362B] leading-tight tabular-nums">502</div>
+                <div class="text-[11.5px] font-medium text-[#55635D]">StoreCount</div>
+              </div>
+            </div>
+
+            <!-- KPI 3: Total Cities -->
+            <div class="kpi-card flex items-center gap-3">
+              <svg class="w-11 h-11 text-[#0C4E37]" viewBox="0 0 52 52" fill="none">
+                <circle cx="23" cy="26" r="19" stroke="currentColor" stroke-width="2.2" stroke-dasharray="88 26" stroke-linecap="round"/>
+                <path d="M12 17H34L32 13H14L12 17Z" fill="currentColor"/>
+                <path d="M14 19H32L29.5 39H16.5L14 19Z" stroke="currentColor" stroke-width="2.3" fill="#FAF8F3"/>
+                <circle cx="23" cy="29" r="4.5" fill="currentColor"/>
+                <circle cx="38" cy="35" r="8.5" fill="#0C4E37" stroke="#FAF8F3" stroke-width="2"/>
+                <text x="38" y="39" text-anchor="middle" fill="#FAF8F3" font-size="11.5" font-weight="800">$</text>
+              </svg>
+              <div>
+                <div id="p3-kpi-cities" class="text-xl sm:text-[24px] font-extrabold text-[#16362B] leading-tight tabular-nums">82</div>
+                <div class="text-[11.5px] font-medium text-[#55635D]">Total Cities</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Column Content Layout (32% / 32% / 36%) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4 flex-1 relative z-20">
+          <!-- Column 1 (Left 32% -> ~4 cols) -->
+          <div class="lg:col-span-4 flex flex-col justify-between gap-3">
+            <!-- Left Top: TotalRevenue by City -->
+            <div class="flex flex-col flex-1">
+              <h3 class="text-[13.5px] font-bold text-[#1B392F] mb-1">TotalRevenue by City</h3>
+              <div class="relative h-[225px] w-full">
+                <canvas id="p3-rev-city-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Left Bottom: Count of StoreID by City -->
+            <div class="flex flex-col flex-1 relative">
+              <div class="flex items-center justify-between mb-1">
+                <h3 class="text-[13.5px] font-bold text-[#1B392F]">Count of StoreID by City</h3>
+                <!-- Mini Storefront & Map Decorative Badge -->
+                <svg class="w-16 h-11 hidden sm:block -mb-2 mr-1 pointer-events-none" viewBox="0 0 90 60">
+                  <rect x="46" y="18" width="34" height="28" rx="3" fill="#0E5038" />
+                  <path d="M44,24 L82,24 L78,15 L48,15 Z" fill="#073423" />
+                  <rect x="52" y="30" width="9" height="16" fill="#E8DFC5" />
+                  <rect x="65" y="30" width="10" height="10" fill="#A6DFC5" />
+                  <path d="M12,48 L30,36 L48,44 L62,34 L62,54 L12,54 Z" fill="#EFE7D1" stroke="#C7B996" stroke-width="1" />
+                  <path d="M35,14 C29,14 25,18.5 25,24 C25,31 35,41 35,41 C35,41 45,31 45,24 C45,18.5 41,14 35,14 Z" fill="#006241" stroke="#FAF8F3" stroke-width="1.5" />
+                  <circle cx="35" cy="24" r="5" fill="#FAF8F3" />
+                  <circle cx="35" cy="24" r="3.4" fill="#006241" />
+                </svg>
+              </div>
+              <div class="relative h-[205px] w-full pl-6 sm:pl-10">
+                <canvas id="p3-store-city-chart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2 (Middle 32% -> ~4 cols) -->
+          <div class="lg:col-span-4 flex flex-col justify-between gap-3">
+            <!-- Middle Top: AverageOrder Value by City -->
+            <div class="flex flex-col flex-1 relative">
+              <div class="flex items-center justify-between mb-1">
+                <h3 class="text-[13.5px] font-bold text-[#1B392F]">AverageOrder Value by City</h3>
+                <!-- Decorative Green India Location Pin Badge -->
+                <svg class="w-14 h-12 hidden sm:block -my-3 mr-1 pointer-events-none" viewBox="0 0 70 64">
+                  <ellipse cx="35" cy="54" rx="22" ry="6" fill="#4A2711" opacity="0.25" />
+                  <path d="M35,4 C23,4 14,13 14,24 C14,38 35,55 35,55 C35,55 56,38 56,24 C56,13 47,4 35,4 Z" fill="#005B3C" stroke="#C9A86A" stroke-width="1.6" />
+                  <!-- Simplified India Silhouette Inside Pin -->
+                  <path d="M33,16 L38,18 L37,22 L42,25 L39,30 L36,36 L34,42 L31,35 L29,29 L26,26 L30,22 Z" fill="#FAF8F3" />
+                  <circle cx="35" cy="11" r="3.5" fill="#FAF8F3" opacity="0.85" />
+                  <ellipse cx="26" cy="53" rx="6" ry="3.8" fill="#5A2F14" />
+                  <ellipse cx="36" cy="55" rx="6.5" ry="4" fill="#47230D" />
+                  <ellipse cx="45" cy="53" rx="6" ry="3.8" fill="#683718" />
+                </svg>
+              </div>
+              <div class="relative h-[225px] w-full">
+                <canvas id="p3-aov-city-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Middle Bottom: TotalTransaction by State -->
+            <div class="flex flex-col flex-1">
+              <h3 class="text-[13.5px] font-bold text-[#1B392F] mb-1">TotalTransaction by State</h3>
+              <div class="relative h-[205px] w-full">
+                <canvas id="p3-tx-state-chart"></canvas>
+              </div>
+              <!-- Power BI Style Scrollbar Accent Under State Chart -->
+              <div class="w-full h-1.5 bg-[#E2E4E1] rounded-full mt-1 overflow-hidden">
+                <div class="w-[58%] h-full bg-[#9AA49F] rounded-full ml-[12%]"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3 (Right 36% -> ~4 cols): Full-Height Interactive India Map Card -->
+          <div class="lg:col-span-4 flex flex-col">
+            <div class="bg-white rounded-md shadow-md border border-[#DCE0DC] p-2.5 flex flex-col flex-1 h-full min-h-[455px]">
+              <div class="flex items-center justify-between mb-1.5 px-1">
+                <h3 class="text-[13.5px] font-bold text-[#1B392F]">State</h3>
+                <span class="text-[10.5px] font-medium text-[#5A6C64]">Click marker to filter</span>
+              </div>
+              <div class="relative flex-1 rounded overflow-hidden border border-[#E4E7E4]">
+                <div id="india-map"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================================================================ -->
+      <!-- PAGE 4: INVENTORY ANALYTICS                                      -->
+      <!-- ================================================================ -->
+      <section id="page-4" class="report-page px-5 sm:px-7 pt-3 sm:pt-4 pb-5 justify-between">
+        <!-- Header Row: Logo + Title + Synced Power BI Slicers -->
+        <div class="flex flex-wrap items-start justify-between gap-3 relative z-20">
+          <!-- Brand Header -->
+          <div class="flex items-center gap-3.5">
+            <svg class="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] shrink-0 drop-shadow-sm" viewBox="0 0 120 120">
+              <use href="#sbx-siren" x="0" y="0" width="120" height="120" />
+            </svg>
+            <div class="h-12 w-[1.5px] bg-[#6E867B]/70"></div>
+            <div>
+              <h1 class="text-2xl sm:text-[31px] font-extrabold tracking-tight text-[#005238] leading-none">
+                STARBUCKS<sup class="text-xs font-bold ml-0.5 align-top">®</sup>
+              </h1>
+              <p class="text-[12px] sm:text-[13.5px] font-semibold text-[#1B4A3A] mt-1">
+                Brewing Insights. Fueling Connections.
+              </p>
+              <div class="w-11 h-[3.5px] bg-[#005238] rounded-full mt-1.5"></div>
+            </div>
+          </div>
+
+          <!-- Synced Header Slicers -->
+          <div class="flex items-center gap-3 mr-auto sm:ml-6 lg:ml-8 mt-1">
+            <!-- Year Slicer -->
+            <div class="w-[104px] sm:w-[116px]">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-[#3C4B45] mb-1 px-0.5">
+                <span>Year</span>
+                <svg class="w-3 h-3 text-[#65756E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="pbi-slicer-box relative flex items-center">
+                <select id="p4-year-slicer" class="pbi-select w-full text-[12px] font-medium text-[#1F332B] px-2.5 py-1.5 pr-7" onchange="handleSlicerChange('year', this.value)">
+                  <option value="All">All</option>
+                  <option value="2023">2023</option>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                </select>
+                <svg class="w-3.5 h-3.5 text-[#5D6B65] absolute right-2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+
+            <!-- MonthName Slicer -->
+            <div class="w-[128px] sm:w-[144px]">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-[#3C4B45] mb-1 px-0.5">
+                <span>MonthName</span>
+                <svg class="w-3 h-3 text-[#65756E]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="pbi-slicer-box relative flex items-center">
+                <select id="p4-month-slicer" class="pbi-select w-full text-[12px] font-medium text-[#1F332B] px-2.5 py-1.5 pr-7" onchange="handleSlicerChange('month', this.value)">
+                  <option value="All">All</option>
+                  <option value="January">January</option>
+                  <option value="February">February</option>
+                  <option value="March">March</option>
+                  <option value="April">April</option>
+                  <option value="May">May</option>
+                  <option value="June">June</option>
+                  <option value="July">July</option>
+                  <option value="August">August</option>
+                  <option value="September">September</option>
+                  <option value="October">October</option>
+                  <option value="November">November</option>
+                  <option value="December">December</option>
+                </select>
+                <svg class="w-3.5 h-3.5 text-[#5D6B65] absolute right-2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Inventory KPI Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-5 sm:mt-6 px-2 sm:px-8 relative z-20">
+          <!-- KPI 1: Total Inventory Units (Stacked 3D Cubes Icon) -->
+          <div class="kpi-card flex items-center gap-4">
+            <svg class="w-12 h-12 shrink-0 text-[#0B4F35]" viewBox="0 0 52 52" fill="none">
+              <!-- Top Cube -->
+              <path d="M26 7L35 12V22L26 27L17 22V12L26 7Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M17 12L26 17L35 12M26 17V27" stroke="currentColor" stroke-width="2"/>
+              <!-- Bottom Left Cube -->
+              <path d="M16 25L25 30V40L16 45L7 40V30L16 25Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M7 30L16 35L25 30M16 35V45" stroke="currentColor" stroke-width="2"/>
+              <!-- Bottom Right Cube -->
+              <path d="M36 25L45 30V40L36 45L27 40V30L36 25Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M27 30L36 35L45 30M36 35V45" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <div>
+              <div id="p4-kpi-total" class="text-2xl sm:text-[28px] font-extrabold text-[#123D2D] tracking-tight leading-tight tabular-nums">2,312,645</div>
+              <div class="text-[12.5px] font-semibold text-[#3C4E47] mt-0.5">Total Inventory Units</div>
+            </div>
+          </div>
+
+          <!-- KPI 2: Units Sold (Box + Checkmark Badge Icon) -->
+          <div class="kpi-card flex items-center gap-4">
+            <svg class="w-12 h-12 shrink-0 text-[#0B4F35]" viewBox="0 0 52 52" fill="none">
+              <path d="M24 8L40 16V33L24 42L8 33V16L24 8Z" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M8 16L24 24L40 16M24 24V42M16 12L32 20" stroke="currentColor" stroke-width="2.1"/>
+              <circle cx="38" cy="36" r="9.5" fill="#FAF8F3" stroke="currentColor" stroke-width="2.4"/>
+              <path d="M34 36.2L36.8 39L42.5 33.2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+              <div id="p4-kpi-sold" class="text-2xl sm:text-[28px] font-extrabold text-[#123D2D] tracking-tight leading-tight tabular-nums">2,198,430</div>
+              <div class="text-[12.5px] font-semibold text-[#3C4E47] mt-0.5">Units Sold</div>
+            </div>
+          </div>
+
+          <!-- KPI 3: Closing Inventory (Box + Refresh Arrows Icon) -->
+          <div class="kpi-card flex items-center gap-4">
+            <svg class="w-12 h-12 shrink-0 text-[#0B4F35]" viewBox="0 0 52 52" fill="none">
+              <path d="M24 8L40 16V32L24 40L8 32V16L24 8Z" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M8 16L24 24L40 16M24 24V40M16 12L32 20" stroke="currentColor" stroke-width="2.1"/>
+              <circle cx="37" cy="36" r="10" fill="#FAF8F3"/>
+              <path d="M30.5 34.5A7.2 7.2 0 0 1 43.2 32.5M43.2 32.5V28.5M43.2 32.5H39.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M43.5 37.5A7.2 7.2 0 0 1 30.8 39.5M30.8 39.5V43.5M30.8 39.5H34.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+              <div id="p4-kpi-closing" class="text-2xl sm:text-[28px] font-extrabold text-[#123D2D] tracking-tight leading-tight tabular-nums">114,215</div>
+              <div class="text-[12.5px] font-semibold text-[#3C4E47] mt-0.5">Closing Inventory</div>
+            </div>
+          </div>
+
+          <!-- KPI 4: Average Inventory Value (Cube + Ruler Icon) -->
+          <div class="kpi-card flex items-center gap-4">
+            <svg class="w-12 h-12 shrink-0 text-[#0B4F35]" viewBox="0 0 52 52" fill="none">
+              <path d="M26 8L37 14V26L26 32L15 26V14L26 8Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M15 14L26 20L37 14M26 20V32" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 29L24 38L44 27L44 37L24 48L8 39V29Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" fill="#FAF8F3"/>
+              <path d="M14 33V37M19 36V40M29 35V39M34 32V36M39 29V33" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <div id="p4-kpi-avgval" class="text-2xl sm:text-[28px] font-extrabold text-[#123D2D] tracking-tight leading-tight tabular-nums">49.35</div>
+              <div class="text-[12.5px] font-semibold text-[#3C4E47] mt-0.5">Average Inventory Value</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom 2-Column Inventory Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 flex-1 items-center relative z-20 pl-2 sm:pl-16 pr-2 sm:pr-6 pb-4">
+          <!-- Left: Inventory by Category Donut -->
+          <div class="lg:col-span-5 flex flex-col">
+            <h3 class="text-[18px] font-extrabold text-[#0B4F35] mb-3 ml-2">Inventory by Category</h3>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div class="relative w-[300px] h-[290px] shrink-0">
+                <canvas id="p4-donut-chart"></canvas>
+                <!-- Centered Siren SVG Inside Donut Cutout -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <svg class="w-[90px] h-[90px]" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="59" fill="#FAF8F3" />
+                    <use href="#sbx-siren" x="5" y="5" width="110" height="110" />
+                  </svg>
+                </div>
+              </div>
+              <!-- Clickable Right Legend -->
+              <div id="p4-donut-legend" class="flex flex-wrap sm:flex-col gap-1.5 text-[12.5px] font-semibold text-[#2E3F38] min-w-[126px]"></div>
+            </div>
+          </div>
+
+          <!-- Right: Monthly Inventory Units Line Chart -->
+          <div class="lg:col-span-7 flex flex-col">
+            <h3 class="text-[18px] font-extrabold text-[#0B4F35] mb-3">Monthly Inventory Units</h3>
+            <div class="relative h-[300px] sm:h-[320px] w-full">
+              <canvas id="p4-line-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- POWER BI DESKTOP / SERVICE STYLE BOTTOM PAGE TAB BAR             -->
+    <!-- ================================================================ -->
+    <div class="pbi-bottom-bar flex flex-wrap items-center justify-between px-2 sm:px-3 min-h-[42px] gap-2">
+      <!-- Page Tabs -->
+      <div class="flex items-stretch overflow-x-auto no-scrollbar">
+        <button id="tab-1" class="pbi-tab active px-3.5 sm:px-4 py-2.5 text-[12px] sm:text-[12.5px] whitespace-nowrap flex items-center gap-1.5" onclick="switchPage(1)">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#005238]"></span>
+          Sales Overview
+        </button>
+        <button id="tab-2" class="pbi-tab px-3.5 sm:px-4 py-2.5 text-[12px] sm:text-[12.5px] whitespace-nowrap flex items-center gap-1.5" onclick="switchPage(2)">
+          Financial &amp; Profitability
+        </button>
+        <button id="tab-3" class="pbi-tab px-3.5 sm:px-4 py-2.5 text-[12px] sm:text-[12.5px] whitespace-nowrap flex items-center gap-1.5" onclick="switchPage(3)">
+          Location &amp; Store Performance
+        </button>
+        <button id="tab-4" class="pbi-tab px-3.5 sm:px-4 py-2.5 text-[12px] sm:text-[12.5px] whitespace-nowrap flex items-center gap-1.5" onclick="switchPage(4)">
+          Inventory Analytics
+        </button>
+      </div>
+
+      <!-- Right Status: Active Filter Pill + Reset Filters + Page Counter -->
+      <div class="flex items-center gap-2 py-1.5 ml-auto">
+        <!-- Dynamic Active Filter Pill (Hidden when no filters applied) -->
+        <div id="active-filter-bar" class="hidden items-center gap-2">
+          <div class="flex items-center gap-1.5 bg-[#005238]/10 border border-[#005238]/30 text-[#004F35] text-[11.5px] font-semibold px-2.5 py-1 rounded-full">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8L3 4z"/></svg>
+            <span id="active-filter-text">Filtered</span>
+          </div>
+          <button onclick="resetAllFilters()" class="flex items-center gap-1 bg-[#005238] hover:bg-[#003D29] text-white text-[11.5px] font-semibold px-3 py-1 rounded-full shadow-sm transition-colors cursor-pointer">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5"/></svg>
+            Reset Filters
+          </button>
+        </div>
+
+        <span id="pbi-page-indicator" class="text-[11px] font-semibold text-[#64716B] px-2 hidden sm:inline">Page 1 of 4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- INTERACTIVE DATA MODEL, SVG ARTWORK & CHART/MAP ENGINE           -->
+  <!-- ================================================================ -->
+  <script>
+    // Register DataLabels plugin globally, disabled by default (enabled per-chart)
+    Chart.register(ChartDataLabels);
+
+    /* =====================================================================
+       1. CUSTOM CHART.JS PLUGIN: POWER BI OUTER DONUT CALLOUT LABELS
+       Draws clean external leader lines + percentage labels around donuts
+       ===================================================================== */
+    const donutOuterLabelsPlugin = {
+      id: 'donutOuterLabels',
+      afterDatasetsDraw(chart, args, pluginOptions) {
+        if (!pluginOptions || !pluginOptions.enabled) return;
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const dataset = chart.data.datasets[0];
+        if (!meta || !meta.data || !meta.data.length) return;
+
+        const customLabels = pluginOptions.labels || [];
+        const selectedIdx = pluginOptions.selectedIndex;
+
+        ctx.save();
+        ctx.font = pluginOptions.font || '600 11px "Plus Jakarta Sans", Inter, sans-serif';
+
+        meta.data.forEach((arc, i) => {
+          const val = dataset.data[i];
+          if (!val || val <= 0) return;
+
+          const props = arc.getProps(['x', 'y', 'startAngle', 'endAngle', 'outerRadius'], true);
+          const midAngle = (props.startAngle + props.endAngle) / 2;
+          const cos = Math.cos(midAngle);
+          const sin = Math.sin(midAngle);
+
+          const rStart = props.outerRadius + 2;
+          const rKnee = props.outerRadius + (pluginOptions.elbowLength || 11);
+          const x1 = props.x + cos * rStart;
+          const y1 = props.y + sin * rStart;
+          const x2 = props.x + cos * rKnee;
+          const y2 = props.y + sin * rKnee;
+
+          const isRight = cos >= 0;
+          const hTail = pluginOptions.tailLength || 10;
+          const x3 = x2 + (isRight ? hTail : -hTail);
+          const y3 = y2;
+
+          // Slight vertical adjustment for tight top-left slices so labels never collide
+          let labelY = y3;
+          if (pluginOptions.tightSpread && i === meta.data.length - 1) {
+            labelY -= 4;
+          } else if (pluginOptions.tightSpread && i === meta.data.length - 2) {
+            labelY -= 1;
+          }
+
+          const isDimmed = selectedIdx !== null && selectedIdx !== undefined && selectedIdx !== i;
+          ctx.globalAlpha = isDimmed ? 0.35 : 1;
+
+          // Leader line (optional)
+          if (pluginOptions.showLines !== false) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, labelY);
+            ctx.strokeStyle = '#9AA6A0';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          // Label Text
+          const labelText = customLabels[i] !== undefined ? customLabels[i] : `${val.toFixed(2)}%`;
+          ctx.fillStyle = pluginOptions.textColor || '#33463E';
+          ctx.textAlign = isRight ? 'left' : 'right';
+          ctx.textBaseline = 'middle';
+          const textX = pluginOptions.showLines !== false
+            ? x3 + (isRight ? 4 : -4)
+            : x2 + (isRight ? 4 : -4);
+          ctx.fillText(labelText, textX, labelY);
+        });
+
+        ctx.restore();
+      }
+    };
+    Chart.register(donutOuterLabelsPlugin);
+
+    /* =====================================================================
+       2. POWER BI TOOLTIP THEME DEFAULTS
+       ===================================================================== */
+    const pbiTooltipStyle = {
+      backgroundColor: '#0D3B2A',
+      titleColor: '#E7CE92',
+      bodyColor: '#FAF8F3',
+      borderColor: '#C9A86A',
+      borderWidth: 1,
+      padding: 10,
+      cornerRadius: 6,
+      titleFont: { family: '"Plus Jakarta Sans", Inter, sans-serif', size: 12, weight: '700' },
+      bodyFont: { family: '"Plus Jakarta Sans", Inter, sans-serif', size: 12, weight: '500' },
+      displayColors: true,
+      boxPadding: 4
+    };
+
+    /* =====================================================================
+       3. CORE MASTER DATA & EXACT SCREENSHOT BASELINES
+       ===================================================================== */
+    const YEAR_WEIGHTS = {
+      'All': 1.0,
+      '2023': 0.285,
+      '2024': 0.342,
+      '2025': 0.373
+    };
+    const YEAR_AOV_FACTOR = { 'All': 1.0, '2023': 0.968, '2024': 1.004, '2025': 1.022 };
+    const YEAR_STORE_COUNT = { 'All': 502, '2023': 418, '2024': 466, '2025': 502 };
+    const YEAR_INV_VAL_FACTOR = { 'All': 1.0, '2023': 0.962, '2024': 1.008, '2025': 1.024 };
+
+    // Page 1 & Page 4 X-Axis Month Order (exact screenshot sequence)
+    const VOL_MONTHS = [
+      'November', 'January', 'October', 'December', 'June', 'August',
+      'May', 'September', 'July', 'April', 'February', 'March'
+    ];
+    const P1_BASE_MONTHLY_VOL = [3.96, 3.84, 3.80, 3.72, 3.71, 3.69, 3.64, 3.64, 3.63, 3.57, 3.52, 3.51];
+    const P4_BASE_MONTHLY_INV = [129.4, 125.1, 122.3, 118.4, 116.8, 115.2, 113.5, 113.5, 112.4, 109.6, 106.8, 105.2];
+
+    // Derive normalized monthly share weights (summing to 1.0)
+    const VOL_SUM = P1_BASE_MONTHLY_VOL.reduce((a, b) => a + b, 0);
+    const MONTH_WEIGHTS = {};
+    const MONTH_AOV_FACTOR = {};
+    VOL_MONTHS.forEach((m, idx) => {
+      MONTH_WEIGHTS[m] = P1_BASE_MONTHLY_VOL[idx] / VOL_SUM;
+      MONTH_AOV_FACTOR[m] = 0.97 + (0.06 * (1 - idx / 11));
+    });
+
+    // Page 1 Category Strip (9 items with custom inline SVG artwork)
+    const P1_CATEGORIES = [
+      { key: 'Hot Coffee',    label: 'Hot Coffee',    baseUnits: 12000000, revShare: 0.2596, aovFactor: 1.04, svg: 'hotCoffee' },
+      { key: 'Food',          label: 'Food units',    baseUnits: 7000000,  revShare: 0.1434, aovFactor: 1.09, svg: 'food' },
+      { key: 'Tea',           label: 'Tea Units',     baseUnits: 6000000,  revShare: 0.1374, aovFactor: 0.92, svg: 'tea' },
+      { key: 'Frappuccino',   label: 'Frappuccino',   baseUnits: 6000000,  revShare: 0.1811, aovFactor: 1.15, svg: 'frappuccino' },
+      { key: 'Cold Brew',     label: 'Cold Brew',     baseUnits: 4000000,  revShare: 0.1031, aovFactor: 0.98, svg: 'coldBrew' },
+      { key: 'Cold Coffee',   label: 'Cold Coffee',   baseUnits: 3000000,  revShare: 0.0680, aovFactor: 0.96, svg: 'coldCoffee' },
+      { key: 'Milkshake',     label: 'Milkshake',     baseUnits: 2000000,  revShare: 0.0595, aovFactor: 1.08, svg: 'milkshake' },
+      { key: 'Refreshers',    label: 'Refreshers',    baseUnits: 2000000,  revShare: 0.0478, aovFactor: 0.94, svg: 'refreshers' },
+      { key: 'Hot Chocolate', label: 'Hot Chocolate', baseUnits: 995000,   revShare: 0.0460, aovFactor: 1.01, svg: 'hotChocolate' }
+    ];
+
+    // Page 1 & Page 2 Donut Categories (exact 8 slices + percentages from screenshots)
+    const REV_DONUT_ITEMS = [
+      { key: 'Hot Coffee',    pct: 25.96, p1Color: '#1D3E6E', p2Color: '#0B462E' },
+      { key: 'Frappuccino',   pct: 18.11, p1Color: '#2474E5', p2Color: '#145E40' },
+      { key: 'Food',          pct: 14.34, p1Color: '#154734', p2Color: '#257853' },
+      { key: 'Tea',           pct: 13.74, p1Color: '#66A57B', p2Color: '#41916A' },
+      { key: 'Cold Brew',     pct: 10.31, p1Color: '#1B3B6F', p2Color: '#63AA84' },
+      { key: 'Milkshake',     pct: 5.95,  p1Color: '#2B8CEE', p2Color: '#8CC2A3' },
+      { key: 'Refreshers',    pct: 4.78,  p1Color: '#5CA87E', p2Color: '#B5D9C4' },
+      { key: 'Hot Chocolate', pct: 4.60,  p1Color: '#8CC4A1', p2Color: '#D8ECE0' }
+    ];
+
+    // Page 2 Financial Monthly Series (April -> March)
+    const P2_MONTHS = [
+      'April', 'May', 'June', 'July', 'August', 'September',
+      'October', 'November', 'December', 'January', 'February', 'March'
+    ];
+    const P2_BASE_MONTHLY_REV = [62e6, 69e6, 75e6, 82e6, 88e6, 94e6, 101e6, 107e6, 113e6, 119e6, 125e6, 135e6];
+    const P2_BASE_MONTHLY_CONTRIB = [11.2e6, 12.6e6, 14.0e6, 15.6e6, 17.5e6, 19.4e6, 21.5e6, 23.3e6, 24.8e6, 26.6e6, 29.5e6, 33.4e6];
+    const P2_BASE_MARGIN_TREND = [14.8, 16.3, 15.5, 16.8, 17.3, 17.9, 18.5, 17.9, 18.4, 19.3, 18.7, 20.3];
+    const P2_BASE_COSTS = { cogs: 582800000, labour: 291100000, occupancy: 233400000 };
+
+    // Category-specific subtle margin modifiers on Page 2
+    const P2_CAT_MARGIN_SHIFT = {
+      'Hot Coffee': 1.8, 'Frappuccino': 2.4, 'Food': -2.1, 'Tea': 1.2,
+      'Cold Brew': 1.5, 'Milkshake': -0.8, 'Refreshers': 0.9, 'Hot Chocolate': -0.4
+    };
+
+    // Page 3 Cities & States Master Data
+    const P3_CITIES = [
+      { city: 'Mumbai',    state: 'Maharashtra',    revBn: 1.16, stores: 42, aov: 32.1 },
+      { city: 'Bengaluru', state: 'Karnataka',      revBn: 0.98, stores: 36, aov: 27.4 },
+      { city: 'Delhi',     state: 'Delhi',          revBn: 0.98, stores: 36, aov: 27.3 },
+      { city: 'Hyderabad', state: 'Telangana',      revBn: 0.75, stores: 28, aov: 20.8 },
+      { city: 'Chennai',   state: 'Tamil Nadu',     revBn: 0.61, stores: 22, aov: 16.9 },
+      { city: 'Pune',      state: 'Maharashtra',    revBn: 0.58, stores: 21, aov: 16.2 },
+      { city: 'Kolkata',   state: 'West Bengal',    revBn: 0.38, stores: 14, aov: 10.7 },
+      { city: 'Ahmedabad', state: 'Gujarat',        revBn: 0.30, stores: 11, aov: 8.4  },
+      { city: 'Gurugram',  state: 'Haryana',        revBn: 0.27, stores: 10, aov: 7.6  },
+      { city: 'Tirupati',  state: 'Andhra Pradesh', revBn: 0.24, stores: 9,  aov: 6.8  }
+    ];
+
+    const P3_STATES = [
+      { state: 'Maharashtra',     short: 'Mahar...',  txM: 6.60, stores: 106, cities: 12, revM: 2925, lat: 19.75, lng: 75.71 },
+      { state: 'Karnataka',       short: 'Karnat...', txM: 5.40, stores: 78,  cities: 9,  revM: 2158, lat: 15.32, lng: 75.71 },
+      { state: 'Delhi',           short: 'Delhi',     txM: 3.30, stores: 48,  cities: 1,  revM: 1385, lat: 28.61, lng: 77.21 },
+      { state: 'Tamil Nadu',      short: 'Tamil...',  txM: 3.10, stores: 46,  cities: 8,  revM: 1242, lat: 11.13, lng: 78.66 },
+      { state: 'Telangana',       short: 'Telang...', txM: 2.60, stores: 40,  cities: 5,  revM: 1096, lat: 17.85, lng: 79.12 },
+      { state: 'Uttar Pradesh',   short: 'Uttar...',  txM: 1.80, stores: 34,  cities: 9,  revM: 884,  lat: 26.85, lng: 80.95 },
+      { state: 'Kerala',          short: 'Kerala',    txM: 1.40, stores: 24,  cities: 6,  revM: 635,  lat: 10.85, lng: 76.27 },
+      { state: 'Andhra Pradesh',  short: 'Andhr...',  txM: 1.30, stores: 22,  cities: 6,  revM: 582,  lat: 15.91, lng: 79.74 },
+      { state: 'West Bengal',     short: 'West...',   txM: 1.20, stores: 21,  cities: 4,  revM: 564,  lat: 22.99, lng: 87.85 },
+      { state: 'Gujarat',         short: 'Gujarat',   txM: 1.15, stores: 20,  cities: 6,  revM: 540,  lat: 22.26, lng: 71.19 },
+      { state: 'Punjab',          short: 'Punjab',    txM: 1.10, stores: 18,  cities: 5,  revM: 486,  lat: 31.15, lng: 75.34 },
+      { state: 'Madhya Pradesh',  short: 'Madh...',   txM: 0.90, stores: 15,  cities: 4,  revM: 398,  lat: 22.97, lng: 78.66 },
+      { state: 'Haryana',         short: 'Haryana',   txM: 0.80, stores: 14,  cities: 3,  revM: 382,  lat: 29.06, lng: 76.09 },
+      { state: 'Jharkhand',       short: 'Jharkh...', txM: 0.65, stores: 9,   cities: 2,  revM: 234,  lat: 23.61, lng: 85.28 },
+      { state: 'Jammu & Kashmir', short: 'Jamm...',   txM: 0.60, stores: 7,   cities: 2,  revM: 162,  lat: 33.78, lng: 76.58 }
+    ];
+
+    // Page 4 Inventory Categories (exact 7 slices + colors from screenshot 4)
+    const P4_INV_ITEMS = [
+      { key: 'Hot Coffee',  pct: 27.96, color: '#0B4F35', avgValFactor: 1.06 },
+      { key: 'Frappuccino', pct: 18.44, color: '#008B5E', avgValFactor: 1.12 },
+      { key: 'Food',        pct: 16.27, color: '#3B7A57', avgValFactor: 1.04 },
+      { key: 'Tea',         pct: 14.12, color: '#8EC396', avgValFactor: 0.89 },
+      { key: 'Cold Brew',   pct: 11.36, color: '#2D7FA8', avgValFactor: 0.97 },
+      { key: 'Milkshake',   pct: 6.17,  color: '#78AEE0', avgValFactor: 1.09 },
+      { key: 'Refreshers',  pct: 5.68,  color: '#8BB8F0', avgValFactor: 0.93 }
+    ];
+
+    /* =====================================================================
+       4. APPLICATION STATE
+       ===================================================================== */
+    const appState = {
+      activePage: 1,
+      year: 'All',
+      month: 'All',
+      p1Category: null,
+      p2Category: null,
+      p2MonthIdx: null,
+      p3City: null,
+      p3State: null,
+      p4Category: null
+    };
+
+    // Chart & Map Instances
+    const charts = {};
+    let leafletMap = null;
+    const stateMarkers = {};
+
+    /* =====================================================================
+       5. NUMBER FORMATTING UTILITIES
+       ===================================================================== */
+    // Exact Indian Numbering System (e.g., 13,67,00,00,000 / 3,61,62,643)
+    function formatIndianNumber(num) {
+      const n = Math.round(num);
+      const str = Math.abs(n).toString();
+      if (str.length <= 3) return (n < 0 ? '-' : '') + str;
+      const lastThree = str.slice(-3);
+      const otherNumbers = str.slice(0, -3);
+      const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+      return (n < 0 ? '-' : '') + formatted;
+    }
+
+    // Standard International Grouping (e.g., 1,367,000,000)
+    function formatIntlNumber(num) {
+      return Math.round(num).toLocaleString('en-US');
+    }
+
+    // Compact Unit Format for Category Cards (12M, 7M, 995K, etc.)
+    function formatCompactUnits(num) {
+      if (num >= 1000000) {
+        const val = num / 1000000;
+        return (val >= 9.95 || Math.abs(val - Math.round(val)) < 0.05)
+          ? Math.round(val) + 'M'
+          : val.toFixed(1) + 'M';
+      }
+      if (num >= 1000) {
+        const val = num / 1000;
+        return Math.round(val) + 'K';
+      }
+      return Math.round(num).toString();
+    }
+
+    /* =====================================================================
+       6. CUSTOM COLORFUL INLINE SVG ILLUSTRATIONS FOR PAGE 1 CATEGORY STRIP
+       ===================================================================== */
+    function getCategorySVG(type) {
+      const svgs = {
+        hotCoffee: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Steam Wisps -->
+            <path d="M36 16 C33 10 40 7 37 2 M48 14 C45 8 52 5 49 1 M58 17 C56 12 61 9 59 5" fill="none" stroke="#B7B2A8" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+            <!-- Green Coffee Leaves & Beans -->
+            <path d="M10 62 C6 50 14 42 24 46 C20 56 16 62 10 62 Z" fill="#2E7D32"/>
+            <path d="M16 70 C8 68 6 58 16 55 C22 60 22 68 16 70 Z" fill="#43A047"/>
+            <!-- Ceramic Mug Handle -->
+            <path d="M68 34 C81 34 83 56 68 58" fill="none" stroke="#E8DEC8" stroke-width="6" stroke-linecap="round"/>
+            <path d="M68 34 C81 34 83 56 68 58" fill="none" stroke="#D3C4A8" stroke-width="1.5"/>
+            <!-- Mug Body -->
+            <path d="M22 28 H70 L66 64 C65 72 27 72 26 64 Z" fill="#F5EFE2" stroke="#D7CBB4" stroke-width="1.2"/>
+            <!-- Latte Art Surface -->
+            <ellipse cx="46" cy="28" rx="24" ry="8" fill="#C68443" stroke="#E8DEC8" stroke-width="2"/>
+            <path d="M36 28 C41 23 51 23 56 28 C51 32 41 32 36 28 Z" fill="#FFF8EC"/>
+            <path d="M40 28 C44 26 48 26 52 28" fill="none" stroke="#B56E2D" stroke-width="1.4"/>
+            <!-- Siren Emblem -->
+            <use href="#sbx-siren" x="34" y="38" width="24" height="24"/>
+            <!-- Coffee Beans -->
+            <ellipse cx="22" cy="73" rx="6.5" ry="4" transform="rotate(-15 22 73)" fill="#522B14"/>
+            <ellipse cx="34" cy="76" rx="6.5" ry="4" transform="rotate(8 34 76)" fill="#6D3B1D"/>
+            <ellipse cx="64" cy="74" rx="6" ry="3.8" transform="rotate(-10 64 74)" fill="#4A2510"/>
+          </svg>`,
+
+        food: `
+          <svg viewBox="0 0 96 86" class="w-[78px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- White Ceramic Plate -->
+            <ellipse cx="48" cy="67" rx="42" ry="12" fill="#FFFFFF" stroke="#D8D4CA" stroke-width="1.5"/>
+            <ellipse cx="48" cy="67" rx="30" ry="7" fill="none" stroke="#ECE8DF" stroke-width="1.2"/>
+            <!-- Blueberry Muffin (Right) -->
+            <path d="M58 44 L82 44 L78 65 C77 68 63 68 62 65 Z" fill="#4B2B1B"/>
+            <path d="M62 45 L64 65 M68 45 L69 66 M74 45 L73 66 M78 45 L76 65" stroke="#351D11" stroke-width="1.1"/>
+            <path d="M54 44 C54 27 86 27 86 44 C86 48 54 48 54 44 Z" fill="#D49549" stroke="#B37731" stroke-width="1"/>
+            <circle cx="64" cy="37" r="2.6" fill="#2A2654"/>
+            <circle cx="74" cy="34" r="2.5" fill="#2A2654"/>
+            <circle cx="78" cy="41" r="2.3" fill="#2A2654"/>
+            <circle cx="68" cy="42" r="2.1" fill="#3B356E"/>
+            <!-- Golden Croissant Sandwich (Left) -->
+            <path d="M12 57 C14 66 56 66 58 57 L54 53 H16 Z" fill="#C97E2E"/>
+            <!-- Egg & Cheese Layer -->
+            <path d="M14 54 C24 58 46 58 56 54 L53 48 H17 Z" fill="#F6C945"/>
+            <path d="M18 52 C26 49 42 50 52 52" fill="none" stroke="#C8462C" stroke-width="2.6" stroke-linecap="round"/>
+            <!-- Croissant Top -->
+            <path d="M10 52 C12 34 26 28 35 28 C44 28 58 34 60 52 C48 55 22 55 10 52 Z" fill="#DF963C" stroke="#B76F1D" stroke-width="1.2"/>
+            <path d="M23 31 C20 39 20 46 21 52 M35 29 C35 37 35 45 35 53 M47 31 C50 39 50 46 49 52" stroke="#B56C1A" stroke-width="1.5" fill="none"/>
+          </svg>`,
+
+        tea: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Steam -->
+            <path d="M46 10 C43 6 49 3 47 0 M55 11 C53 7 58 4 56 1" fill="none" stroke="#C5C0B5" stroke-width="1.8" stroke-linecap="round"/>
+            <!-- Tall Paper Tea Cup -->
+            <path d="M28 19 H68 L62 72 C61 76 35 76 34 72 Z" fill="#F4EFE4" stroke="#D3C9B6" stroke-width="1.2"/>
+            <ellipse cx="48" cy="19" rx="20" ry="6" fill="#C68D53" stroke="#EAE2D2" stroke-width="2"/>
+            <ellipse cx="48" cy="19" rx="13" ry="3.2" fill="#DFB484" opacity="0.65"/>
+            <use href="#sbx-siren" x="35" y="34" width="26" height="26"/>
+            <!-- Green Tea Leaf & Bowl -->
+            <path d="M12 63 C10 52 20 45 29 52 C26 62 18 65 12 63 Z" fill="#3B873E"/>
+            <ellipse cx="22" cy="72" rx="11" ry="6" fill="#3B2A1E" stroke="#6B5342" stroke-width="1.2"/>
+            <!-- Cinnamon Stick & Ginger -->
+            <path d="M54 75 L76 66" stroke="#8C4820" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M54 75 L76 66" stroke="#A65E30" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="75" cy="61" r="6" fill="#D5B278" stroke="#B08D55" stroke-width="1"/>
+            <circle cx="81" cy="65" r="4.5" fill="#DFC08A" stroke="#B08D55" stroke-width="1"/>
+          </svg>`,
+
+        frappuccino: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Green Straw -->
+            <path d="M54 30 L64 6" stroke="#00704A" stroke-width="4" stroke-linecap="round"/>
+            <!-- Whipped Cream Dome -->
+            <path d="M31 31 C29 22 38 17 44 17 C45 10 55 10 58 17 C65 17 69 24 65 31 Z" fill="#FFFDF7" stroke="#E4DCCB" stroke-width="1.2"/>
+            <path d="M37 22 C45 18 55 19 61 24 M34 28 C44 24 56 24 64 28" fill="none" stroke="#5C3116" stroke-width="2.2" stroke-linecap="round"/>
+            <!-- Clear Iced Cup Filled with Chocolate Frapp -->
+            <path d="M30 31 H66 L60 76 C59 79 37 79 36 76 Z" fill="#8C512D" stroke="#D5D2CA" stroke-width="1.5"/>
+            <path d="M34 38 C42 46 56 42 62 50 M36 58 C45 64 54 58 60 66" fill="none" stroke="#4D2610" stroke-width="3" opacity="0.55"/>
+            <path d="M30 31 H66" stroke="#EAEAEA" stroke-width="3" stroke-linecap="round"/>
+            <use href="#sbx-siren" x="36" y="42" width="24" height="24"/>
+            <!-- Chocolate Chunks & Beans -->
+            <rect x="20" y="68" width="10" height="8" rx="1.5" transform="rotate(-12 25 72)" fill="#4B2511"/>
+            <ellipse cx="69" cy="74" rx="6" ry="3.8" fill="#5D3016"/>
+          </svg>`,
+
+        coldBrew: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Tall Clear Cold Brew Glass -->
+            <path d="M30 16 H66 L61 75 C60 79 36 79 35 75 Z" fill="#2A1308" stroke="#CFCBC2" stroke-width="1.6"/>
+            <!-- Swirling Caramel Cream Top -->
+            <path d="M31 17 H65 L63 32 C55 28 45 36 33 30 Z" fill="#B5743E" opacity="0.9"/>
+            <path d="M35 28 C44 35 53 26 62 34 L61 44 C52 38 43 46 34 40 Z" fill="#7D431E" opacity="0.65"/>
+            <!-- Translucent Ice Cubes -->
+            <rect x="35" y="19" width="9" height="8" rx="1.5" fill="#F2E2CC" opacity="0.55" transform="rotate(-8 39 23)"/>
+            <rect x="49" y="18" width="10" height="8" rx="1.5" fill="#F2E2CC" opacity="0.5" transform="rotate(10 54 22)"/>
+            <rect x="42" y="25" width="9" height="8" rx="1.5" fill="#E6C9A5" opacity="0.4"/>
+            <use href="#sbx-siren" x="36" y="38" width="24" height="24"/>
+            <!-- Fallen Ice Cube -->
+            <rect x="64" y="67" width="10" height="9" rx="2" fill="#DCE5E8" stroke="#B7C6CC" stroke-width="1" transform="rotate(14 69 71)"/>
+          </svg>`,
+
+        coldCoffee: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Green Straw -->
+            <path d="M52 24 L61 4" stroke="#00704A" stroke-width="3.8" stroke-linecap="round"/>
+            <!-- Clear Dome Lid -->
+            <path d="M31 28 C31 11 65 11 65 28 Z" fill="#EFEAE0" fill-opacity="0.65" stroke="#CCC6BA" stroke-width="1.4"/>
+            <!-- Cream Swirl Inside Dome -->
+            <path d="M36 27 C37 18 46 16 49 18 C54 15 61 19 60 27 Z" fill="#E6C39A"/>
+            <!-- Layered Cold Coffee Body -->
+            <path d="M31 28 H65 L59 76 C58 79 38 79 37 76 Z" fill="#B97B48" stroke="#D2CCC0" stroke-width="1.5"/>
+            <path d="M33 44 C43 52 55 46 62 55 L59 76 C58 79 38 79 37 76 Z" fill="#8C4E24" opacity="0.72"/>
+            <path d="M35 30 C42 42 54 36 60 46" fill="none" stroke="#F7E5CE" stroke-width="3" opacity="0.6"/>
+            <use href="#sbx-siren" x="36" y="42" width="24" height="24"/>
+            <!-- Beans -->
+            <ellipse cx="29" cy="75" rx="5.5" ry="3.5" fill="#4D2712"/>
+            <ellipse cx="66" cy="74" rx="5.5" ry="3.5" fill="#5F3218"/>
+          </svg>`,
+
+        milkshake: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Green Straw -->
+            <path d="M54 24 L64 4" stroke="#00704A" stroke-width="3.8" stroke-linecap="round"/>
+            <!-- Tall Whipped Cream & Cocoa Dust -->
+            <path d="M29 29 C27 18 37 13 43 13 C45 6 56 6 59 14 C67 15 70 23 66 29 Z" fill="#FFFDF8" stroke="#E0D7C5" stroke-width="1.2"/>
+            <path d="M34 22 C43 17 55 18 62 23 M32 27 C42 23 56 23 64 27" fill="none" stroke="#4D2612" stroke-width="2.4" stroke-linecap="round"/>
+            <!-- Rich Chocolate Shake Cup -->
+            <path d="M29 29 H67 L60 76 C59 79 37 79 36 76 Z" fill="#7D4527" stroke="#D5CFC4" stroke-width="1.4"/>
+            <path d="M33 31 C40 44 58 38 63 52" fill="none" stroke="#47220E" stroke-width="3.2" opacity="0.55"/>
+            <use href="#sbx-siren" x="36" y="42" width="24" height="24"/>
+            <!-- Chocolate Squares -->
+            <rect x="19" y="65" width="11" height="10" rx="1.5" transform="rotate(-14 24 70)" fill="#472310" stroke="#2D1408" stroke-width="1"/>
+            <rect x="64" y="69" width="12" height="8" rx="1.5" transform="rotate(10 70 73)" fill="#582D16"/>
+          </svg>`,
+
+        refreshers: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Green Straw -->
+            <path d="M52 24 L62 6" stroke="#00704A" stroke-width="3.8" stroke-linecap="round"/>
+            <!-- Vibrant Berry Pink Refresher Cup -->
+            <path d="M30 24 H66 L60 75 C59 79 37 79 36 75 Z" fill="#E31E5B" stroke="#E5B7C5" stroke-width="1.5"/>
+            <ellipse cx="48" cy="24" rx="18" ry="5" fill="#F24B7E" stroke="#F8D5DF" stroke-width="1.5"/>
+            <!-- Ice & Berries Floating Inside -->
+            <rect x="36" y="25" width="9" height="8" rx="2" fill="#FFD1DF" opacity="0.65" transform="rotate(-10 40 29)"/>
+            <rect x="51" y="27" width="9" height="8" rx="2" fill="#FFD1DF" opacity="0.55" transform="rotate(14 55 31)"/>
+            <circle cx="43" cy="22" r="3.5" fill="#6F1545"/>
+            <circle cx="53" cy="23" r="3.2" fill="#A1133C"/>
+            <use href="#sbx-siren" x="36" y="41" width="24" height="24"/>
+            <!-- Fresh Strawberry & Blueberries at Base -->
+            <path d="M22 65 C18 65 18 76 25 78 C32 76 32 65 28 65 Z" fill="#D91E36"/>
+            <path d="M21 65 L25 61 L29 65" fill="#2E7D32"/>
+            <circle cx="67" cy="74" r="4.5" fill="#3D3C7C"/>
+            <circle cx="74" cy="76" r="3.5" fill="#2B2A5E"/>
+          </svg>`,
+
+        hotChocolate: `
+          <svg viewBox="0 0 96 86" class="w-[74px] h-[66px] mx-auto drop-shadow-sm">
+            <!-- Ceramic Mug Handle -->
+            <path d="M68 35 C80 35 81 56 67 59" fill="none" stroke="#EDE5D5" stroke-width="5.5" stroke-linecap="round"/>
+            <!-- Whipped Cream + Cocoa Shavings -->
+            <path d="M26 30 C25 19 36 14 43 15 C46 9 56 9 59 15 C67 16 70 24 68 30 Z" fill="#FFFDF8" stroke="#E2D9C6" stroke-width="1.2"/>
+            <path d="M32 23 C42 18 55 19 63 24 M30 28 C42 24 56 24 65 28" fill="none" stroke="#4D2611" stroke-width="2.3" stroke-linecap="round"/>
+            <circle cx="44" cy="18" r="1.5" fill="#4D2611"/>
+            <circle cx="54" cy="20" r="1.6" fill="#4D2611"/>
+            <circle cx="49" cy="24" r="1.4" fill="#4D2611"/>
+            <!-- Ceramic Mug Body -->
+            <path d="M25 29 H69 L65 68 C64 74 30 74 29 68 Z" fill="#F2EBE0" stroke="#D5CBB7" stroke-width="1.2"/>
+            <use href="#sbx-siren" x="35" y="39" width="24" height="24"/>
+            <!-- Chocolate Chunks -->
+            <rect x="16" y="64" width="12" height="9" rx="1.5" transform="rotate(-14 22 68)" fill="#4D2612"/>
+            <rect x="65" y="67" width="11" height="8" rx="1.5" transform="rotate(14 70 71)" fill="#5C2E16"/>
+          </svg>`
+      };
+      return svgs[type] || '';
+    }
+
+    /* =====================================================================
+       7. INITIALIZE ALL CHARTS & MAP
+       ===================================================================== */
+    function initPage1Charts() {
+      // 1A. Build 9 Category Sales Breakdown Cards
+      const stripEl = document.getElementById('p1-category-strip');
+      stripEl.innerHTML = P1_CATEGORIES.map(cat => `
+        <div class="cat-card flex flex-col items-center justify-end py-1.5 px-1 text-center"
+             data-cat="${cat.key}"
+             onclick="toggleP1Category('${cat.key}')">
+          <div class="mb-0.5">${getCategorySVG(cat.svg)}</div>
+          <div class="cat-vol text-[20px] sm:text-[23px] font-extrabold text-[#16362B] leading-tight tabular-nums">${formatCompactUnits(cat.baseUnits)}</div>
+          <div class="text-[11px] sm:text-[11.5px] font-medium text-[#55635D] leading-tight mt-0.5">${cat.label}</div>
+        </div>
+      `).join('');
+
+      // 1B. Page 1 Donut Chart
+      const p1DonutCtx = document.getElementById('p1-donut-chart').getContext('2d');
+      charts.p1Donut = new Chart(p1DonutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: REV_DONUT_ITEMS.map(d => d.key),
+          datasets: [{
+            data: REV_DONUT_ITEMS.map(d => d.pct),
+            backgroundColor: REV_DONUT_ITEMS.map(d => d.p1Color),
+            borderColor: '#FAF8F3',
+            borderWidth: 1.5,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '57%',
+          layout: { padding: { top: 24, bottom: 24, left: 52, right: 52 } },
+          onClick: (evt, elems) => {
+            if (elems.length) {
+              const cat = REV_DONUT_ITEMS[elems[0].index].key;
+              toggleP1Category(cat);
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                label: (ctx) => {
+                  const pct = ctx.parsed.toFixed(2);
+                  const rev = (13670000000 * (ctx.parsed / 100) * getTimeFactor()).toFixed(0);
+                  return ` ${ctx.label}: ${pct}% (₹${formatIndianNumber(rev)})`;
+                }
+              }
+            },
+            donutOuterLabels: {
+              enabled: true,
+              labels: REV_DONUT_ITEMS.map(d => `${d.pct}%`),
+              selectedIndex: null,
+              elbowLength: 10,
+              tailLength: 10,
+              tightSpread: true,
+              font: '600 10.5px "Plus Jakarta Sans", Inter, sans-serif',
+              textColor: '#485952'
+            }
+          }
+        }
+      });
+
+      // Build Page 1 Custom Legend
+      const p1LegendEl = document.getElementById('p1-donut-legend');
+      p1LegendEl.innerHTML = REV_DONUT_ITEMS.map(d => `
+        <div class="legend-item flex items-center gap-2" data-cat="${d.key}" onclick="toggleP1Category('${d.key}')">
+          <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${d.p1Color}"></span>
+          <span class="truncate">${d.key}</span>
+        </div>
+      `).join('');
+
+      // 1C. Page 1 Monthly Sales Volume Line Chart
+      const p1LineCtx = document.getElementById('p1-line-chart').getContext('2d');
+      charts.p1Line = new Chart(p1LineCtx, {
+        type: 'line',
+        data: {
+          labels: VOL_MONTHS,
+          datasets: [{
+            label: 'Total Units Sold',
+            data: [...P1_BASE_MONTHLY_VOL],
+            borderColor: '#144B37',
+            backgroundColor: 'rgba(20, 75, 55, 0.08)',
+            borderWidth: 2.6,
+            tension: 0.16,
+            pointRadius: 2.5,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#144B37',
+            pointBorderColor: '#FAF8F3',
+            pointBorderWidth: 1.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) {
+              const clickedMonth = VOL_MONTHS[elems[0].index];
+              handleSlicerChange('month', appState.month === clickedMonth ? 'All' : clickedMonth);
+            }
+          },
+          scales: {
+            y: {
+              min: 3.4,
+              max: 4.05,
+              ticks: {
+                stepSize: 0.5,
+                callback: (val) => (val === 3.5 || val === 4.0) ? `${val.toFixed(1)}M` : '',
+                color: '#55635D',
+                font: { size: 11, weight: '500' }
+              },
+              title: {
+                display: true,
+                text: 'Total Units Sold',
+                color: '#374841',
+                font: { size: 11, weight: '600' }
+              },
+              grid: { color: 'rgba(130, 146, 138, 0.22)', borderDash: [3, 3] },
+              border: { display: false }
+            },
+            x: {
+              ticks: {
+                maxRotation: 35,
+                minRotation: 35,
+                color: '#4B5B54',
+                font: { size: 10.5, weight: '500' }
+              },
+              title: {
+                display: true,
+                text: 'Month',
+                color: '#374841',
+                font: { size: 11, weight: '600' }
+              },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                label: (ctx) => ` Units Sold: ${ctx.parsed.y.toFixed(2)}M`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function initPage2Charts() {
+      // 2A. Monochrome Green Donut Chart
+      const p2DonutCtx = document.getElementById('p2-donut-chart').getContext('2d');
+      charts.p2Donut = new Chart(p2DonutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: REV_DONUT_ITEMS.map(d => d.key),
+          datasets: [{
+            data: REV_DONUT_ITEMS.map(d => d.pct),
+            backgroundColor: REV_DONUT_ITEMS.map(d => d.p2Color),
+            borderColor: '#FAF8F3',
+            borderWidth: 1.5,
+            hoverOffset: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          layout: { padding: { top: 24, bottom: 24, left: 46, right: 46 } },
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP2Category(REV_DONUT_ITEMS[elems[0].index].key);
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}%`
+              }
+            },
+            donutOuterLabels: {
+              enabled: true,
+              labels: REV_DONUT_ITEMS.map(d => `${d.pct.toFixed(2)}%`),
+              selectedIndex: null,
+              showLines: false,
+              elbowLength: 7,
+              tailLength: 4,
+              tightSpread: true,
+              font: '700 10.5px "Plus Jakarta Sans", Inter, sans-serif',
+              textColor: '#1E3C31'
+            }
+          }
+        }
+      });
+
+      const p2LegendEl = document.getElementById('p2-donut-legend');
+      p2LegendEl.innerHTML = REV_DONUT_ITEMS.map(d => `
+        <div class="legend-item flex items-center gap-2" data-cat="${d.key}" onclick="toggleP2Category('${d.key}')">
+          <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${d.p2Color}"></span>
+          <span class="truncate">${d.key}</span>
+        </div>
+      `).join('');
+
+      // 2B. Monthly Revenue Vertical Bar Chart
+      const p2RevCtx = document.getElementById('p2-monthly-rev-chart').getContext('2d');
+      charts.p2Rev = new Chart(p2RevCtx, {
+        type: 'bar',
+        data: {
+          labels: P2_MONTHS,
+          datasets: [{
+            label: 'Monthly Revenue',
+            data: [...P2_BASE_MONTHLY_REV],
+            backgroundColor: P2_MONTHS.map(() => '#0A4A31'),
+            borderRadius: 2,
+            barPercentage: 0.72
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP2Month(elems[0].index);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 150000000,
+              ticks: {
+                stepSize: 30000000,
+                callback: (v) => v === 0 ? '0' : v.toLocaleString('en-US'),
+                color: '#3D4E47',
+                font: { size: 9.5, weight: '600' }
+              },
+              grid: { color: 'rgba(130, 146, 138, 0.16)' },
+              border: { color: '#C6CCC8' }
+            },
+            x: {
+              ticks: { maxRotation: 45, minRotation: 45, color: '#3D4E47', font: { size: 9.5, weight: '600' } },
+              grid: { display: false },
+              border: { color: '#C6CCC8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` Revenue: ${formatIntlNumber(ctx.parsed.y)}` }
+            }
+          }
+        }
+      });
+
+      // 2C. Monthly Operating Contribution Vertical Bar Chart
+      const p2ContribCtx = document.getElementById('p2-monthly-contrib-chart').getContext('2d');
+      charts.p2Contrib = new Chart(p2ContribCtx, {
+        type: 'bar',
+        data: {
+          labels: P2_MONTHS,
+          datasets: [{
+            label: 'Operating Contribution',
+            data: [...P2_BASE_MONTHLY_CONTRIB],
+            backgroundColor: P2_MONTHS.map(() => '#0A4A31'),
+            borderRadius: 2,
+            barPercentage: 0.72
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP2Month(elems[0].index);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 40000000,
+              ticks: {
+                stepSize: 10000000,
+                callback: (v) => v === 0 ? '0' : v.toLocaleString('en-US'),
+                color: '#3D4E47',
+                font: { size: 9.5, weight: '600' }
+              },
+              grid: { color: 'rgba(130, 146, 138, 0.16)' },
+              border: { color: '#C6CCC8' }
+            },
+            x: {
+              ticks: { maxRotation: 45, minRotation: 45, color: '#3D4E47', font: { size: 9.5, weight: '600' } },
+              grid: { display: false },
+              border: { color: '#C6CCC8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` Contribution: ${formatIntlNumber(ctx.parsed.y)}` }
+            }
+          }
+        }
+      });
+
+      // 2D. Cost by Component Horizontal Bar Chart
+      const p2CostCtx = document.getElementById('p2-cost-chart').getContext('2d');
+      charts.p2Cost = new Chart(p2CostCtx, {
+        type: 'bar',
+        data: {
+          labels: ['COGS', 'Labour Cost', 'Occupancy Cost'],
+          datasets: [{
+            label: 'Cost',
+            data: [P2_BASE_COSTS.cogs, P2_BASE_COSTS.labour, P2_BASE_COSTS.occupancy],
+            backgroundColor: '#0A4A31',
+            borderRadius: 2,
+            barThickness: 22
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 86 } },
+          scales: {
+            x: {
+              min: 0,
+              max: 800000000,
+              ticks: {
+                stepSize: 200000000,
+                callback: (v) => v === 0 ? '0' : v.toLocaleString('en-US'),
+                color: '#3D4E47',
+                font: { size: 9.5, weight: '600' }
+              },
+              grid: { display: false },
+              border: { color: '#C6CCC8' }
+            },
+            y: {
+              ticks: { color: '#1E3C31', font: { size: 11.5, weight: '700' } },
+              grid: { display: false },
+              border: { color: '#C6CCC8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              display: true,
+              anchor: 'end',
+              align: 'right',
+              offset: 6,
+              color: '#16362B',
+              font: { family: '"Plus Jakarta Sans", Inter, sans-serif', size: 11.5, weight: '800' },
+              formatter: (val) => formatIntlNumber(val)
+            },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` ${ctx.label}: ${formatIntlNumber(ctx.parsed.x)}` }
+            }
+          }
+        }
+      });
+
+      // 2E. Operating Contribution Margin Trend Line Chart
+      const p2MarginCtx = document.getElementById('p2-margin-chart').getContext('2d');
+      charts.p2Margin = new Chart(p2MarginCtx, {
+        type: 'line',
+        data: {
+          labels: P2_MONTHS,
+          datasets: [{
+            label: 'Contribution Margin',
+            data: [...P2_BASE_MARGIN_TREND],
+            borderColor: '#0A4A31',
+            backgroundColor: 'rgba(10, 74, 49, 0.08)',
+            borderWidth: 2.5,
+            tension: 0.08,
+            pointRadius: 2.5,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#0A4A31',
+            pointBorderColor: '#FAF8F3',
+            pointBorderWidth: 1.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP2Month(elems[0].index);
+          },
+          scales: {
+            y: {
+              min: 12,
+              max: 22,
+              ticks: {
+                stepSize: 2,
+                callback: (v) => `${v.toFixed(2)}%`,
+                color: '#3D4E47',
+                font: { size: 10, weight: '600' }
+              },
+              grid: { color: 'rgba(130, 146, 138, 0.16)' },
+              border: { color: '#C6CCC8' }
+            },
+            x: {
+              ticks: { maxRotation: 45, minRotation: 45, color: '#3D4E47', font: { size: 9.5, weight: '600' } },
+              grid: { display: false },
+              border: { color: '#C6CCC8' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` Contribution Margin: ${ctx.parsed.y.toFixed(2)}%` }
+            }
+          }
+        }
+      });
+    }
+
+    function initPage3ChartsAndMap() {
+      const cityLabels = P3_CITIES.map(c => c.city);
+      const barBaseColor = '#153932';
+
+      // 3A. TotalRevenue by City
+      charts.p3RevCity = new Chart(document.getElementById('p3-rev-city-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: cityLabels,
+          datasets: [{
+            label: 'TotalRevenue',
+            data: P3_CITIES.map(c => c.revBn),
+            backgroundColor: P3_CITIES.map(() => barBaseColor),
+            borderRadius: 1.5,
+            barPercentage: 0.78
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP3City(P3_CITIES[elems[0].index].city);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 1.25,
+              ticks: {
+                stepSize: 0.5,
+                callback: (v) => `${v.toFixed(1)}bn`,
+                color: '#55635D',
+                font: { size: 10 }
+              },
+              title: { display: true, text: 'TotalRevenue', color: '#3B4D46', font: { size: 10.5, weight: '600' } },
+              grid: { color: 'rgba(130, 146, 138, 0.22)', borderDash: [2, 2] },
+              border: { display: false }
+            },
+            x: {
+              ticks: { maxRotation: 35, minRotation: 35, color: '#4B5B54', font: { size: 9.5 } },
+              title: { display: true, text: 'City', color: '#3B4D46', font: { size: 10.5, weight: '600' } },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` Revenue: ${ctx.parsed.y.toFixed(2)}bn` }
+            }
+          }
+        }
+      });
+
+      // 3B. Count of StoreID by City (with top integer data labels)
+      charts.p3StoreCity = new Chart(document.getElementById('p3-store-city-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: cityLabels,
+          datasets: [{
+            label: 'Count of StoreID',
+            data: P3_CITIES.map(c => c.stores),
+            backgroundColor: P3_CITIES.map(() => barBaseColor),
+            borderRadius: 1.5,
+            barPercentage: 0.78
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 18 } },
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP3City(P3_CITIES[elems[0].index].city);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 48,
+              ticks: {
+                stepSize: 20,
+                callback: (v) => (v <= 40 ? v : ''),
+                color: '#55635D',
+                font: { size: 10 }
+              },
+              title: { display: true, text: 'Count of StoreID', color: '#3B4D46', font: { size: 10, weight: '600' } },
+              grid: { color: 'rgba(130, 146, 138, 0.22)', borderDash: [2, 2] },
+              border: { display: false }
+            },
+            x: {
+              ticks: { maxRotation: 35, minRotation: 35, color: '#4B5B54', font: { size: 9.5 } },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              display: true,
+              anchor: 'end',
+              align: 'top',
+              offset: 1,
+              color: '#3B4D46',
+              font: { size: 10, weight: '700' }
+            },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` Store Count: ${ctx.parsed.y}` }
+            }
+          }
+        }
+      });
+
+      // 3C. AverageOrder Value by City
+      charts.p3AovCity = new Chart(document.getElementById('p3-aov-city-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: cityLabels,
+          datasets: [{
+            label: 'AverageOrder Value',
+            data: P3_CITIES.map(c => c.aov),
+            backgroundColor: P3_CITIES.map(() => barBaseColor),
+            borderRadius: 1.5,
+            barPercentage: 0.78
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP3City(P3_CITIES[elems[0].index].city);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 35,
+              ticks: { stepSize: 10, color: '#55635D', font: { size: 10 } },
+              title: { display: true, text: 'AverageOrder Value', color: '#3B4D46', font: { size: 10.5, weight: '600' } },
+              grid: { color: 'rgba(130, 146, 138, 0.22)', borderDash: [2, 2] },
+              border: { display: false }
+            },
+            x: {
+              ticks: { maxRotation: 35, minRotation: 35, color: '#4B5B54', font: { size: 9.5 } },
+              title: { display: true, text: 'City', color: '#3B4D46', font: { size: 10.5, weight: '600' } },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: { label: (ctx) => ` AOV Index: ${ctx.parsed.y.toFixed(1)}` }
+            }
+          }
+        }
+      });
+
+      // 3D. TotalTransaction by State (15 States)
+      charts.p3TxState = new Chart(document.getElementById('p3-tx-state-chart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: P3_STATES.map(s => s.short),
+          datasets: [{
+            label: 'TotalTransaction',
+            data: P3_STATES.map(s => s.txM),
+            backgroundColor: P3_STATES.map(() => barBaseColor),
+            borderRadius: 1.5,
+            barPercentage: 0.76
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP3State(P3_STATES[elems[0].index].state);
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 7,
+              ticks: {
+                stepSize: 5,
+                callback: (v) => (v === 0 || v === 5) ? `${v}M` : '',
+                color: '#55635D',
+                font: { size: 10 }
+              },
+              title: { display: true, text: 'TotalTransaction', color: '#3B4D46', font: { size: 10, weight: '600' } },
+              grid: { color: 'rgba(130, 146, 138, 0.22)', borderDash: [2, 2] },
+              border: { display: false }
+            },
+            x: {
+              ticks: { maxRotation: 90, minRotation: 90, color: '#4B5B54', font: { size: 9 } },
+              title: { display: true, text: 'State', color: '#3B4D46', font: { size: 10, weight: '600' } },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                title: (items) => P3_STATES[items[0].dataIndex].state,
+                label: (ctx) => ` Transactions: ${ctx.parsed.y.toFixed(2)}M`
+              }
+            }
+          }
+        }
+      });
+
+      // 3E. Interactive Leaflet Map of India
+      leafletMap = L.map('india-map', {
+        center: [22.2, 80.5],
+        zoom: 4.5,
+        zoomSnap: 0.1,
+        zoomControl: true,
+        scrollWheelZoom: false
+      });
+
+      // CartoDB Positron clean cartographic base map (with clean fallback ocean background)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 12,
+        minZoom: 3.5
+      }).addTo(leafletMap);
+
+      // Plot Dark-Green Interactive Markers for All 15 Indian States
+      P3_STATES.forEach(st => {
+        const marker = L.circleMarker([st.lat, st.lng], {
+          radius: 6.5,
+          fillColor: '#364A42',
+          color: '#172922',
+          weight: 1.5,
+          opacity: 1,
+          fillOpacity: 0.92
+        }).addTo(leafletMap);
+
+        marker.bindTooltip(`
+          <div style="min-width:135px">
+            <div style="color:#E7CE92;font-weight:700;font-size:12.5px;margin-bottom:3px">${st.state}</div>
+            <div>Stores: <strong>${st.stores}</strong></div>
+            <div>Cities: <strong>${st.cities}</strong></div>
+            <div>Transactions: <strong>${st.txM.toFixed(2)}M</strong></div>
+          </div>
+        `, { direction: 'top', offset: [0, -6], className: 'pbi-map-tooltip' });
+
+        marker.on('click', () => toggleP3State(st.state));
+        stateMarkers[st.state] = marker;
+      });
+    }
+
+    function initPage4Charts() {
+      // 4A. Inventory by Category Donut Chart
+      const p4DonutCtx = document.getElementById('p4-donut-chart').getContext('2d');
+      charts.p4Donut = new Chart(p4DonutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: P4_INV_ITEMS.map(d => d.key),
+          datasets: [{
+            data: P4_INV_ITEMS.map(d => d.pct),
+            backgroundColor: P4_INV_ITEMS.map(d => d.color),
+            borderColor: '#FAF8F3',
+            borderWidth: 1.5,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '57%',
+          layout: { padding: { top: 28, bottom: 28, left: 52, right: 52 } },
+          onClick: (evt, elems) => {
+            if (elems.length) toggleP4Category(P4_INV_ITEMS[elems[0].index].key);
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                label: (ctx) => {
+                  const units = Math.round(2312645 * (ctx.parsed / 100) * getTimeFactor());
+                  return ` ${ctx.label}: ${ctx.parsed.toFixed(2)}% (${formatIntlNumber(units)} units)`;
+                }
+              }
+            },
+            donutOuterLabels: {
+              enabled: true,
+              labels: P4_INV_ITEMS.map(d => `${d.pct.toFixed(2)}%`),
+              selectedIndex: null,
+              showLines: false,
+              elbowLength: 9,
+              tailLength: 4,
+              tightSpread: true,
+              font: '700 11.5px "Plus Jakarta Sans", Inter, sans-serif',
+              textColor: '#1F3B30'
+            }
+          }
+        }
+      });
+
+      // Build Page 4 Custom Legend
+      const p4LegendEl = document.getElementById('p4-donut-legend');
+      p4LegendEl.innerHTML = P4_INV_ITEMS.map(d => `
+        <div class="legend-item flex items-center gap-2.5" data-cat="${d.key}" onclick="toggleP4Category('${d.key}')">
+          <span class="w-3 h-3 rounded-full shrink-0" style="background:${d.color}"></span>
+          <span>${d.key}</span>
+        </div>
+      `).join('');
+
+      // 4B. Monthly Inventory Units Line Chart
+      const p4LineCtx = document.getElementById('p4-line-chart').getContext('2d');
+      charts.p4Line = new Chart(p4LineCtx, {
+        type: 'line',
+        data: {
+          labels: VOL_MONTHS,
+          datasets: [{
+            label: 'Inventory Units',
+            data: [...P4_BASE_MONTHLY_INV],
+            borderColor: '#144B37',
+            backgroundColor: 'rgba(20, 75, 55, 0.08)',
+            borderWidth: 2.8,
+            tension: 0.16,
+            pointRadius: 2.5,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#144B37',
+            pointBorderColor: '#FAF8F3',
+            pointBorderWidth: 1.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elems) => {
+            if (elems.length) {
+              const clickedMonth = VOL_MONTHS[elems[0].index];
+              handleSlicerChange('month', appState.month === clickedMonth ? 'All' : clickedMonth);
+            }
+          },
+          scales: {
+            y: {
+              min: 100,
+              max: 132,
+              ticks: {
+                stepSize: 10,
+                callback: (val) => val <= 130 ? `${val}K` : '',
+                color: '#1F3A2F',
+                font: { size: 12, weight: '700' }
+              },
+              title: {
+                display: true,
+                text: 'Inventory Units',
+                color: '#1F3A2F',
+                font: { size: 11.5, weight: '700' }
+              },
+              grid: { color: 'rgba(130, 146, 138, 0.16)' },
+              border: { display: false }
+            },
+            x: {
+              ticks: {
+                maxRotation: 35,
+                minRotation: 35,
+                color: '#1F3A2F',
+                font: { size: 11, weight: '600' }
+              },
+              title: {
+                display: true,
+                text: 'Month',
+                color: '#1F3A2F',
+                font: { size: 11.5, weight: '700' }
+              },
+              grid: { display: false },
+              border: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              ...pbiTooltipStyle,
+              callbacks: {
+                label: (ctx) => ` Inventory Units: ${ctx.parsed.y.toFixed(1)}K`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /* =====================================================================
+       8. INTERACTIVITY & CROSS-FILTER ENGINE
+       ===================================================================== */
+    function getTimeFactor() {
+      const yw = YEAR_WEIGHTS[appState.year] || 1.0;
+      const mw = appState.month === 'All' ? 1.0 : (MONTH_WEIGHTS[appState.month] || 1 / 12);
+      return yw * mw;
+    }
+
+    // Slicer Change Handler (Synced across Page 1 and Page 4)
+    function handleSlicerChange(type, value) {
+      appState[type] = value;
+      // Sync dropdown DOM elements
+      document.getElementById('p1-year-slicer').value = appState.year;
+      document.getElementById('p4-year-slicer').value = appState.year;
+      document.getElementById('p1-month-slicer').value = appState.month;
+      document.getElementById('p4-month-slicer').value = appState.month;
+
+      updatePage1Visuals();
+      updatePage4Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP1Category(catKey) {
+      appState.p1Category = (appState.p1Category === catKey) ? null : catKey;
+      updatePage1Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP2Category(catKey) {
+      appState.p2Category = (appState.p2Category === catKey) ? null : catKey;
+      updatePage2Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP2Month(monthIdx) {
+      appState.p2MonthIdx = (appState.p2MonthIdx === monthIdx) ? null : monthIdx;
+      updatePage2Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP3City(cityName) {
+      if (appState.p3City === cityName) {
+        appState.p3City = null;
+      } else {
+        appState.p3City = cityName;
+        appState.p3State = null; // City selection takes precedence
+      }
+      updatePage3Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP3State(stateName) {
+      if (appState.p3State === stateName) {
+        appState.p3State = null;
+      } else {
+        appState.p3State = stateName;
+        appState.p3City = null; // State selection takes precedence
+      }
+      updatePage3Visuals();
+      updateFilterBar();
+    }
+
+    function toggleP4Category(catKey) {
+      appState.p4Category = (appState.p4Category === catKey) ? null : catKey;
+      updatePage4Visuals();
+      updateFilterBar();
+    }
+
+    // Helper: Dim color via hex to rgba
+    function hexToRgba(hex, alpha) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // --- Update Page 1 Visuals ---
+    function updatePage1Visuals() {
+      const isDefault = appState.year === 'All' && appState.month === 'All' && !appState.p1Category;
+      const timeFactor = getTimeFactor();
+      const catObj = appState.p1Category ? P1_CATEGORIES.find(c => c.key === appState.p1Category) : null;
+      const catFactor = catObj ? catObj.revShare : 1.0;
+
+      // Exact restoration when unfiltered
+      const rev = isDefault ? 13670000000 : Math.round(13670000000 * timeFactor * catFactor);
+      const tx = isDefault ? 36162643 : Math.round(36162643 * timeFactor * catFactor);
+      const aov = isDefault
+        ? 378.01
+        : 378.01 * (YEAR_AOV_FACTOR[appState.year] || 1) * (appState.month === 'All' ? 1 : MONTH_AOV_FACTOR[appState.month]) * (catObj ? catObj.aovFactor : 1);
+      const stores = YEAR_STORE_COUNT[appState.year] || 502;
+
+      document.getElementById('p1-kpi-revenue').textContent = formatIndianNumber(rev);
+      document.getElementById('p1-kpi-transactions').textContent = formatIndianNumber(tx);
+      document.getElementById('p1-kpi-aov').textContent = aov.toFixed(2);
+      document.getElementById('p1-kpi-stores').textContent = stores;
+
+      // Update 9 Category Cards (values + highlight/dim states)
+      document.querySelectorAll('#p1-category-strip .cat-card').forEach(card => {
+        const key = card.dataset.cat;
+        const item = P1_CATEGORIES.find(c => c.key === key);
+        const scaledUnits = item.baseUnits * timeFactor;
+        card.querySelector('.cat-vol').textContent = formatCompactUnits(scaledUnits);
+
+        card.classList.toggle('is-selected', appState.p1Category === key);
+        card.classList.toggle('is-dimmed', Boolean(appState.p1Category && appState.p1Category !== key));
+      });
+
+      // Update Page 1 Donut slice highlight/dimming
+      const donutIdx = appState.p1Category
+        ? REV_DONUT_ITEMS.findIndex(d => d.key === appState.p1Category)
+        : -1;
+      charts.p1Donut.data.datasets[0].backgroundColor = REV_DONUT_ITEMS.map((d, i) =>
+        (donutIdx === -1 || donutIdx === i) ? d.p1Color : hexToRgba(d.p1Color, 0.24)
+      );
+      charts.p1Donut.options.plugins.donutOuterLabels.selectedIndex = donutIdx === -1 ? null : donutIdx;
+      charts.p1Donut.update();
+
+      // Update Page 1 Legend highlight
+      document.querySelectorAll('#p1-donut-legend .legend-item').forEach(el => {
+        const key = el.dataset.cat;
+        el.classList.toggle('is-selected', appState.p1Category === key);
+        el.classList.toggle('is-dimmed', Boolean(appState.p1Category && appState.p1Category !== key));
+      });
+
+      // Update Page 1 Monthly Line Chart
+      const yw = YEAR_WEIGHTS[appState.year] || 1.0;
+      const lineScale = yw * catFactor;
+      const newLineData = P1_BASE_MONTHLY_VOL.map(v => +(v * lineScale).toFixed(3));
+      const minVal = Math.min(...newLineData);
+      const maxVal = Math.max(...newLineData);
+
+      charts.p1Line.data.datasets[0].data = newLineData;
+      charts.p1Line.data.datasets[0].pointRadius = VOL_MONTHS.map(m =>
+        appState.month === m ? 6.5 : 2.5
+      );
+      charts.p1Line.data.datasets[0].pointBackgroundColor = VOL_MONTHS.map(m =>
+        appState.month === m ? '#C9A86A' : '#144B37'
+      );
+
+      // Keep exact 3.5M - 4.0M axis when unfiltered; dynamically adapt when filtered
+      if (isDefault || (appState.year === 'All' && !appState.p1Category)) {
+        charts.p1Line.options.scales.y.min = 3.4;
+        charts.p1Line.options.scales.y.max = 4.05;
+        charts.p1Line.options.scales.y.ticks.stepSize = 0.5;
+        charts.p1Line.options.scales.y.ticks.callback = (val) => (val === 3.5 || val === 4.0) ? `${val.toFixed(1)}M` : '';
+      } else {
+        const pad = Math.max((maxVal - minVal) * 0.35, maxVal * 0.08);
+        charts.p1Line.options.scales.y.min = Math.max(0, +(minVal - pad).toFixed(2));
+        charts.p1Line.options.scales.y.max = +(maxVal + pad).toFixed(2);
+        charts.p1Line.options.scales.y.ticks.stepSize = undefined;
+        charts.p1Line.options.scales.y.ticks.callback = (val) => `${val.toFixed(2)}M`;
+      }
+      charts.p1Line.update();
+    }
+
+    // --- Update Page 2 Visuals ---
+    function updatePage2Visuals() {
+      const isDefault = !appState.p2Category && appState.p2MonthIdx === null;
+      const catItem = appState.p2Category ? REV_DONUT_ITEMS.find(d => d.key === appState.p2Category) : null;
+      const catShare = catItem ? (catItem.pct / 100) : 1.0;
+
+      const revSum = P2_BASE_MONTHLY_REV.reduce((a, b) => a + b, 0);
+      const monthShare = appState.p2MonthIdx !== null
+        ? (P2_BASE_MONTHLY_REV[appState.p2MonthIdx] / revSum)
+        : 1.0;
+
+      const marginShift = appState.p2Category ? (P2_CAT_MARGIN_SHIFT[appState.p2Category] || 0) : 0;
+
+      let totalRev, totalCost, contrib, margin;
+      if (isDefault) {
+        totalRev = 1367000000;
+        totalCost = 1107300000;
+        contrib = 259700000;
+        margin = 19.00;
+      } else {
+        totalRev = Math.round(1367000000 * catShare * monthShare);
+        const baseMargin = appState.p2MonthIdx !== null ? P2_BASE_MARGIN_TREND[appState.p2MonthIdx] : 19.00;
+        margin = +(baseMargin + marginShift).toFixed(2);
+        contrib = Math.round(totalRev * (margin / 100));
+        totalCost = totalRev - contrib;
+      }
+
+      document.getElementById('p2-kpi-revenue').textContent = formatIntlNumber(totalRev);
+      document.getElementById('p2-kpi-cost').textContent = formatIntlNumber(totalCost);
+      document.getElementById('p2-kpi-contrib').textContent = formatIntlNumber(contrib);
+      document.getElementById('p2-kpi-margin').textContent = `${margin.toFixed(2)}%`;
+
+      // Donut Highlighting
+      const donutIdx = appState.p2Category ? REV_DONUT_ITEMS.findIndex(d => d.key === appState.p2Category) : -1;
+      charts.p2Donut.data.datasets[0].backgroundColor = REV_DONUT_ITEMS.map((d, i) =>
+        (donutIdx === -1 || donutIdx === i) ? d.p2Color : hexToRgba(d.p2Color, 0.22)
+      );
+      charts.p2Donut.options.plugins.donutOuterLabels.selectedIndex = donutIdx === -1 ? null : donutIdx;
+      charts.p2Donut.update();
+
+      document.querySelectorAll('#p2-donut-legend .legend-item').forEach(el => {
+        const key = el.dataset.cat;
+        el.classList.toggle('is-selected', appState.p2Category === key);
+        el.classList.toggle('is-dimmed', Boolean(appState.p2Category && appState.p2Category !== key));
+      });
+
+      // Monthly Revenue & Monthly Operating Contribution Bars
+      const revData = P2_BASE_MONTHLY_REV.map(v => Math.round(v * catShare));
+      const contribData = P2_BASE_MONTHLY_CONTRIB.map(v => Math.round(v * catShare * (1 + marginShift / 100)));
+
+      charts.p2Rev.data.datasets[0].data = revData;
+      charts.p2Rev.data.datasets[0].backgroundColor = P2_MONTHS.map((_, i) =>
+        (appState.p2MonthIdx === null || appState.p2MonthIdx === i) ? '#0A4A31' : 'rgba(10, 74, 49, 0.25)'
+      );
+      charts.p2Rev.options.scales.y.max = appState.p2Category ? undefined : 150000000;
+      charts.p2Rev.options.scales.y.ticks.stepSize = appState.p2Category ? undefined : 30000000;
+      charts.p2Rev.update();
+
+      charts.p2Contrib.data.datasets[0].data = contribData;
+      charts.p2Contrib.data.datasets[0].backgroundColor = P2_MONTHS.map((_, i) =>
+        (appState.p2MonthIdx === null || appState.p2MonthIdx === i) ? '#0A4A31' : 'rgba(10, 74, 49, 0.25)'
+      );
+      charts.p2Contrib.options.scales.y.max = appState.p2Category ? undefined : 40000000;
+      charts.p2Contrib.options.scales.y.ticks.stepSize = appState.p2Category ? undefined : 10000000;
+      charts.p2Contrib.update();
+
+      // Cost by Component Horizontal Bar
+      const costRatio = totalCost / 1107300000;
+      const cogs = Math.round(P2_BASE_COSTS.cogs * costRatio);
+      const labour = Math.round(P2_BASE_COSTS.labour * costRatio);
+      const occ = totalCost - cogs - labour;
+      charts.p2Cost.data.datasets[0].data = [cogs, labour, occ];
+      charts.p2Cost.options.scales.x.max = isDefault ? 800000000 : Math.ceil(cogs * 1.42);
+      charts.p2Cost.options.scales.x.ticks.stepSize = isDefault ? 200000000 : undefined;
+      charts.p2Cost.update();
+
+      // Margin Trend Line
+      charts.p2Margin.data.datasets[0].data = P2_BASE_MARGIN_TREND.map(v => +(v + marginShift).toFixed(2));
+      charts.p2Margin.data.datasets[0].pointRadius = P2_MONTHS.map((_, i) => appState.p2MonthIdx === i ? 6 : 2.5);
+      charts.p2Margin.data.datasets[0].pointBackgroundColor = P2_MONTHS.map((_, i) => appState.p2MonthIdx === i ? '#C9A86A' : '#0A4A31');
+      charts.p2Margin.update();
+    }
+
+    // --- Update Page 3 Visuals ---
+    function updatePage3Visuals() {
+      const selCity = appState.p3City;
+      const selState = appState.p3State;
+      const cityObj = selCity ? P3_CITIES.find(c => c.city === selCity) : null;
+      const effectiveState = selState || (cityObj ? cityObj.state : null);
+
+      // Update Page 3 KPIs
+      if (!selCity && !selState) {
+        document.getElementById('p3-kpi-rev-store').textContent = '27.23M';
+        document.getElementById('p3-kpi-stores').textContent = '502';
+        document.getElementById('p3-kpi-cities').textContent = '82';
+      } else if (cityObj) {
+        const revPerStore = (cityObj.revBn * 1000) / cityObj.stores;
+        document.getElementById('p3-kpi-rev-store').textContent = `${revPerStore.toFixed(2)}M`;
+        document.getElementById('p3-kpi-stores').textContent = cityObj.stores;
+        document.getElementById('p3-kpi-cities').textContent = '1';
+      } else if (selState) {
+        const stObj = P3_STATES.find(s => s.state === selState);
+        if (stObj) {
+          const revPerStore = stObj.revM / stObj.stores;
+          document.getElementById('p3-kpi-rev-store').textContent = `${revPerStore.toFixed(2)}M`;
+          document.getElementById('p3-kpi-stores').textContent = stObj.stores;
+          document.getElementById('p3-kpi-cities').textContent = stObj.cities;
+        }
+      }
+
+      // Highlight matching City bars across all 3 city charts
+      const cityBarColors = P3_CITIES.map(c => {
+        if (!selCity && !selState) return '#153932';
+        if (selCity) return c.city === selCity ? '#006241' : 'rgba(21, 57, 50, 0.22)';
+        return c.state === selState ? '#006241' : 'rgba(21, 57, 50, 0.22)';
+      });
+
+      [charts.p3RevCity, charts.p3StoreCity, charts.p3AovCity].forEach(ch => {
+        ch.data.datasets[0].backgroundColor = cityBarColors;
+        ch.update();
+      });
+
+      // Highlight matching State bar
+      charts.p3TxState.data.datasets[0].backgroundColor = P3_STATES.map(s => {
+        if (!effectiveState) return '#153932';
+        return s.state === effectiveState ? '#006241' : 'rgba(21, 57, 50, 0.22)';
+      });
+      charts.p3TxState.update();
+
+      // Highlight matching Leaflet Map marker
+      P3_STATES.forEach(st => {
+        const m = stateMarkers[st.state];
+        if (!m) return;
+        const isSelected = effectiveState === st.state;
+        const isDimmed = Boolean(effectiveState && !isSelected);
+        m.setStyle({
+          radius: isSelected ? 9.5 : 6.5,
+          fillColor: isSelected ? '#00704A' : '#364A42',
+          color: isSelected ? '#C9A86A' : '#172922',
+          weight: isSelected ? 2.8 : 1.5,
+          fillOpacity: isDimmed ? 0.28 : 0.94,
+          opacity: isDimmed ? 0.35 : 1
+        });
+        if (isSelected) m.bringToFront();
+      });
+    }
+
+    // --- Update Page 4 Visuals ---
+    function updatePage4Visuals() {
+      const isDefault = appState.year === 'All' && appState.month === 'All' && !appState.p4Category;
+      const timeFactor = getTimeFactor();
+      const catObj = appState.p4Category ? P4_INV_ITEMS.find(c => c.key === appState.p4Category) : null;
+      const catShare = catObj ? (catObj.pct / 100) : 1.0;
+
+      const totalInv = isDefault ? 2312645 : Math.round(2312645 * timeFactor * catShare);
+      const soldUnits = isDefault ? 2198430 : Math.round(2198430 * timeFactor * catShare);
+      const closingInv = isDefault ? 114215 : Math.max(0, totalInv - soldUnits);
+      const avgVal = isDefault
+        ? 49.35
+        : 49.35 * (YEAR_INV_VAL_FACTOR[appState.year] || 1) * (catObj ? catObj.avgValFactor : 1);
+
+      document.getElementById('p4-kpi-total').textContent = formatIntlNumber(totalInv);
+      document.getElementById('p4-kpi-sold').textContent = formatIntlNumber(soldUnits);
+      document.getElementById('p4-kpi-closing').textContent = formatIntlNumber(closingInv);
+      document.getElementById('p4-kpi-avgval').textContent = avgVal.toFixed(2);
+
+      // Donut Highlighting
+      const donutIdx = appState.p4Category ? P4_INV_ITEMS.findIndex(d => d.key === appState.p4Category) : -1;
+      charts.p4Donut.data.datasets[0].backgroundColor = P4_INV_ITEMS.map((d, i) =>
+        (donutIdx === -1 || donutIdx === i) ? d.color : hexToRgba(d.color, 0.24)
+      );
+      charts.p4Donut.options.plugins.donutOuterLabels.selectedIndex = donutIdx === -1 ? null : donutIdx;
+      charts.p4Donut.update();
+
+      document.querySelectorAll('#p4-donut-legend .legend-item').forEach(el => {
+        const key = el.dataset.cat;
+        el.classList.toggle('is-selected', appState.p4Category === key);
+        el.classList.toggle('is-dimmed', Boolean(appState.p4Category && appState.p4Category !== key));
+      });
+
+      // Line Chart Scaling
+      const yw = YEAR_WEIGHTS[appState.year] || 1.0;
+      const scale = yw * catShare;
+      const newData = P4_BASE_MONTHLY_INV.map(v => +(v * scale).toFixed(1));
+      const minV = Math.min(...newData);
+      const maxV = Math.max(...newData);
+
+      charts.p4Line.data.datasets[0].data = newData;
+      charts.p4Line.data.datasets[0].pointRadius = VOL_MONTHS.map(m => appState.month === m ? 6.5 : 2.5);
+      charts.p4Line.data.datasets[0].pointBackgroundColor = VOL_MONTHS.map(m => appState.month === m ? '#C9A86A' : '#144B37');
+
+      if (isDefault || (appState.year === 'All' && !appState.p4Category)) {
+        charts.p4Line.options.scales.y.min = 100;
+        charts.p4Line.options.scales.y.max = 132;
+        charts.p4Line.options.scales.y.ticks.stepSize = 10;
+        charts.p4Line.options.scales.y.ticks.callback = (val) => val <= 130 ? `${val}K` : '';
+      } else {
+        const pad = Math.max((maxV - minV) * 0.35, maxV * 0.08);
+        charts.p4Line.options.scales.y.min = Math.max(0, Math.floor(minV - pad));
+        charts.p4Line.options.scales.y.max = Math.ceil(maxV + pad);
+        charts.p4Line.options.scales.y.ticks.stepSize = undefined;
+        charts.p4Line.options.scales.y.ticks.callback = (val) => `${val.toFixed(0)}K`;
+      }
+      charts.p4Line.update();
+    }
+
+    /* =====================================================================
+       9. ACTIVE FILTER PILL & RESET FILTERS
+       ===================================================================== */
+    function updateFilterBar() {
+      const filters = [];
+      if (appState.year !== 'All') filters.push(`Year: ${appState.year}`);
+      if (appState.month !== 'All') filters.push(`Month: ${appState.month}`);
+      if (appState.p1Category) filters.push(`Sales Cat: ${appState.p1Category}`);
+      if (appState.p2Category) filters.push(`Fin Cat: ${appState.p2Category}`);
+      if (appState.p2MonthIdx !== null) filters.push(`Fin Month: ${P2_MONTHS[appState.p2MonthIdx]}`);
+      if (appState.p3City) filters.push(`City: ${appState.p3City}`);
+      if (appState.p3State) filters.push(`State: ${appState.p3State}`);
+      if (appState.p4Category) filters.push(`Inv Cat: ${appState.p4Category}`);
+
+      const bar = document.getElementById('active-filter-bar');
+      const txt = document.getElementById('active-filter-text');
+
+      if (filters.length > 0) {
+        bar.classList.remove('hidden');
+        bar.classList.add('flex');
+        txt.textContent = filters.join(' • ');
+      } else {
+        bar.classList.add('hidden');
+        bar.classList.remove('flex');
+      }
+    }
+
+    function resetAllFilters() {
+      appState.year = 'All';
+      appState.month = 'All';
+      appState.p1Category = null;
+      appState.p2Category = null;
+      appState.p2MonthIdx = null;
+      appState.p3City = null;
+      appState.p3State = null;
+      appState.p4Category = null;
+
+      document.getElementById('p1-year-slicer').value = 'All';
+      document.getElementById('p4-year-slicer').value = 'All';
+      document.getElementById('p1-month-slicer').value = 'All';
+      document.getElementById('p4-month-slicer').value = 'All';
+
+      updatePage1Visuals();
+      updatePage2Visuals();
+      updatePage3Visuals();
+      updatePage4Visuals();
+      updateFilterBar();
+    }
+
+    /* =====================================================================
+       10. BOTTOM TAB PAGE NAVIGATION
+       ===================================================================== */
+    function switchPage(pageNum) {
+      appState.activePage = pageNum;
+
+      // Toggle visible page section
+      for (let i = 1; i <= 4; i++) {
+        const pageEl = document.getElementById(`page-${i}`);
+        const tabEl = document.getElementById(`tab-${i}`);
+        if (i === pageNum) {
+          pageEl.classList.add('active');
+          tabEl.classList.add('active');
+        } else {
+          pageEl.classList.remove('active');
+          tabEl.classList.remove('active');
+        }
+      }
+
+      // Toggle page-specific decorative banners (Page 3 uses Location banner & skyline)
+      const isLoc = pageNum === 3;
+      document.getElementById('banner-standard').classList.toggle('hidden', isLoc);
+      document.getElementById('banner-location').classList.toggle('hidden', !isLoc);
+      document.getElementById('bottom-right-sketch').classList.toggle('hidden', isLoc);
+      document.getElementById('bottom-right-skyline').classList.toggle('hidden', !isLoc);
+      document.getElementById('right-siren-watermark').classList.toggle('hidden', isLoc);
+
+      document.getElementById('pbi-page-indicator').textContent = `Page ${pageNum} of 4`;
+
+      // Resize Charts & Smoothly Invalidate Leaflet Map on Page 3
+      setTimeout(() => {
+        Object.values(charts).forEach(ch => ch && ch.resize());
+        if (pageNum === 3 && leafletMap) {
+          leafletMap.invalidateSize();
+          leafletMap.setView([22.2, 80.5], 4.5, { animate: false });
+        }
+      }, 65);
+    }
+
+    /* =====================================================================
+       11. BOOTSTRAP ON LOAD
+       ===================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      initPage1Charts();
+      initPage2Charts();
+      initPage3ChartsAndMap();
+      initPage4Charts();
+      updateFilterBar();
+    });
+
+    window.addEventListener('resize', () => {
+      if (appState.activePage === 3 && leafletMap) {
+        leafletMap.invalidateSize();
+      }
+    });
+  </script>
+</body>
+</html>
